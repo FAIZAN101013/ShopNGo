@@ -1,1 +1,30 @@
 @import "tailwindcss";
+
+/* Reset all default styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+/* Reset body */
+body {
+  font-family: sans-serif; /* Change as needed */
+  background-color: white;
+  color: black;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reset links */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Active NavLink */
+a.active hr {
+  display: block;
+}
