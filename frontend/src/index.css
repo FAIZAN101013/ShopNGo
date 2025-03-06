@@ -47,9 +47,7 @@ a.active hr {
 }
 
 .space {
-  margin-top: 30px;
+  margin-top: 80px;
+  margin-bottom: 80px;
 }
 
-.spacey {
-  margin-top: 10px;
-}
