@@ -19,14 +19,16 @@ const BestSeller = () => {
 
     return (
         <div className="my-10">
+            
             {/* Title Section */}
-            <div className="text-center text-3xl py-8">
-                <Title text1={'BEST'} text2={'SELLER'} />
-                <p className="max-w-lg text-xs sm:text-sm md:text-base text-gray-600 mt-4">
-                    Discover our top-selling products that customers love the most!
-                </p>
-            </div>
+<div className="flex flex-col items-center text-center text-3xl py-8">
+    <Title text1={'BEST'} text2={'SELLER'} />
+    <p className="max-w-lg text-xs sm:text-sm md:text-base text-gray-600 mt-2">
+        Discover our top-selling products that customers love the most!
+    </p>
+</div>
 
+            <div className='space'></div>
             {/* Product Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 gap-y-6">
                 {bestSeller.length > 0 ? (

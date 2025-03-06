@@ -12,7 +12,9 @@ function LatestCollection() {
     }, [products]);
 
     return (
-        <div className="my-80">
+        <>
+        <div className='space'></div>
+         <div className="my-80 ">
             {/* Padding above the title section */}
             <div className='pt-16'></div>
 
@@ -23,7 +25,7 @@ function LatestCollection() {
                     Step into the future with ShopNGo’s latest collection.  
                 </p>
             </div>
-
+            <div className='space'></div>
             {/* More Padding Between Title & Products */}
             <div className="pt-8 pb-10">
                 {/* Product Grid */}
@@ -40,6 +42,8 @@ function LatestCollection() {
                 </div>
             </div>
         </div>
+        </>
+       
     );
 }
 

@@ -45,3 +45,11 @@ a.active hr {
     color : white;
   }
 }
+
+.space {
+  margin-top: 30px;
+}
+
+.spacey {
+  margin-top: 10px;
+}
