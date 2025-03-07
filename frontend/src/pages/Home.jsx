@@ -19,6 +19,7 @@ const Home = () => {
 
       <div className='space'></div>
       <NewsletterBox />
+       <div className='space'></div>
     </div>
   );
 }
