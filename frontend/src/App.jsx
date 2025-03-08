@@ -11,6 +11,7 @@ import Orders from './pages/Orders'
 import Cart from './pages/Cart'
 import Login from './pages/Login'
 import NavBar from './components/NavBar'
+import Footer from './components/Footer'
 
 const App = () => {
   return (
@@ -27,7 +28,7 @@ const App = () => {
         <Route path='/placeorder' element={<PlaceOrder />} />
         <Route path='/orders' element={<Orders />} />
       </Routes>
-      
+      <Footer />
      
     </div>
   )
