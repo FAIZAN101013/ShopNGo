@@ -10,6 +10,7 @@ import NewsletterBox from '../components/NewsletterBox';
 const Home = () => {
   return (
     <div>
+      <br />
       <Hero />
       <div className='space'></div>
         <LatestCollection />
@@ -19,9 +20,9 @@ const Home = () => {
       <div className='space'></div>
       <OurPolicy />
 
-      <div className='space'></div>
+     
       <NewsletterBox />
-       <div className='space'></div>
+       
     </div>
   );
 }

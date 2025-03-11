@@ -4,7 +4,7 @@ import { assets } from '../assets/assets';
 
 const Footer = () => {
     return (
-        <div className="px-8 sm:px-16 py-10 bg-light">
+        <div className=" !px-8 sm:px-16 !py-10 bg-light">
             <div className='flex flex-col sm:grid grid-cols-[3fr_1fr_1fr] gap-8 my-10 mt-20 text-sm'>
                 <div>
                     <img src={assets.logo} alt="ShopNGo Logo" className='mb-6 w-32' />
@@ -14,7 +14,7 @@ const Footer = () => {
                     </p>
                 </div>
                 <div>
-                    <p className='text-xl font-medium mb-4'>ShopNGo</p>
+                    <p className='text-xl font-medium !mb-4'>ShopNGo</p>
                     <br />
                     <ul className='flex flex-col gap-2 text-gray-600'>
                         <li>Home</li>
