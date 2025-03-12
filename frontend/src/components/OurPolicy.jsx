@@ -13,14 +13,14 @@ const OurPolicy = () => {
         <>
             
           <div className='space'></div>  
-         <div className="flex flex-col sm:flex-row justify-center gap-12 sm:gap-16 text-center py-20 text-xs sm:text-sm md:text-base text-gray-700">
+         <div className="flex flex-col sm:flex-row justify-center !gap-12 sm:gap-16 text-center !py-20 text-xs sm:text-sm md:text-base text-gray-700">
       {policies.map((policy, index) => (
         <div key={index} className="flex flex-col items-center w-60">
           <div className="flex justify-center items-center w-16 h-16 bg-gray-100 rounded-full">
             <img src={policy.icon} className="w-10" alt={policy.title} />
           </div>
           <p className="font-semibold text-lg mt-3">{policy.title}</p>
-          <p className="text-gray-500 mt-2">{policy.desc}</p>
+          <p className="text-gray-500 !mt-2">{policy.desc}</p>
         </div>
       ))}
     </div>
