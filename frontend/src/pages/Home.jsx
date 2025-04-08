@@ -9,20 +9,12 @@ import NewsletterBox from '../components/NewsletterBox';
 
 const Home = () => {
   return (
-    <div>
-      <br />
+    <div className="!space-y-8">
       <Hero />
-      <div className='space'></div>
-        <LatestCollection />
-      <div className='space'></div>
+      <LatestCollection />
       <BestSeller />
-       
-      <div className='space'></div>
       <OurPolicy />
-
-     
       <NewsletterBox />
-       
     </div>
   );
 }

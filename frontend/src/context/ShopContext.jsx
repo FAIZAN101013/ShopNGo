@@ -26,8 +26,32 @@ const ShopContextProvider = (props) => {
         }
         return count;
     };
+    const updateQuantity = (itemId, size, quantity) => {
+        let cartData = structuredClone(cartItems);
 
-    const addToCart = async (itemId, size) => {
+        if (quantity <= 0) {
+            // Remove the size
+            delete cartData[itemId][size];
+
+            // If no sizes left for the item, remove the item entirely
+            if (Object.keys(cartData[itemId]).length === 0) {
+                delete cartData[itemId];
+            }
+
+            toast.info("Item removed from cart");
+        } else {
+            // Normal quantity update
+            if (!cartData[itemId]) {
+                cartData[itemId] = {};
+            }
+            cartData[itemId][size] = quantity;
+        }
+
+        setCartItems(cartData);
+        setCartItemsCount(calculateCartCount(cartData));
+    };
+
+    const addToCart = (itemId, size) => {
         if (!size) {
             toast.error("Please select a size");
             return;
@@ -55,6 +79,20 @@ const ShopContextProvider = (props) => {
         return cartItemsCount;
     };
 
+    const getCartAmount = () => {
+        let total = 0;
+        for (const items in cartItems) {
+            const product = products.find((product) => product._id === items);
+            for (const item in cartItems[items]) {
+                if (cartItems[items][item] > 0) {
+                    const itemPrice = product.price * cartItems[items][item];
+                    total += itemPrice;
+                }
+            }
+        }
+        return total + delivery_fee;
+    };
+
     // Update cart count whenever cartItems changes
     useEffect(() => {
         setCartItemsCount(calculateCartCount(cartItems));
@@ -70,7 +108,10 @@ const ShopContextProvider = (props) => {
         setShowSearch,
         cartItems,
         addToCart,
-        getCartItemsCount
+        getCartItemsCount,
+        updateQuantity,
+        getCartAmount
+
     };
 
     return (

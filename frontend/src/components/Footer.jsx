@@ -59,7 +59,7 @@ const Footer = () => {
                     </div>
 
                     {/* Quick Links */}
-                    <div>
+                <div>
                         <h3 className="text-gray-900 font-semibold !mb-4">Quick Links</h3>
                         <ul className="!space-y-3">
                             {quickLinks.map((link) => (
@@ -90,10 +90,10 @@ const Footer = () => {
                                 </li>
                             ))}
                         </ul>
-                    </div>
+                </div>
 
                     {/* Contact Info */}
-                    <div>
+                <div>
                         <h3 className="text-gray-900 font-semibold !mb-4">Contact Us</h3>
                         <ul className="!space-y-3">
                             <li>
@@ -140,7 +140,7 @@ const Footer = () => {
                                     123 Shopping Street, NY 10001
                                 </a>
                             </li>
-                        </ul>
+                    </ul>
                     </div>
                 </div>
 
