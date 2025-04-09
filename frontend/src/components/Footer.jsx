@@ -29,7 +29,7 @@ const Footer = () => {
             <div className="!max-w-7xl !mx-auto !px-4 sm:!px-6 lg:!px-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 !gap-12 !py-16">
                     {/* Brand Section */}
-                    {/* rerodon cpmmit*/}
+
                     <div className="!space-y-4">
                         <Link to="/">
                             <img src={assets.logo} alt="ShopNGo Logo" className="!h-8" />
