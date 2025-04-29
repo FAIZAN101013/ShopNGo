@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { ShopContext } from '../context/ShopContext';
 import Title from './Title';
-import ProductItem from './productItem';
+import ProductItem from './ProductItem';
 
 const BestSeller = () => {
     const { products } = useContext(ShopContext);
@@ -20,7 +20,7 @@ const BestSeller = () => {
             <div className="flex flex-col items-center text-center !mb-12">
                 <Title text1={'BEST'} text2={'SELLER'} />
                 <p className="!max-w-2xl text-sm sm:text-base text-gray-600 !mt-4">
-                    Discover our most popular products that customers can't get enough of. 
+                    Discover our most popular products that customers can't get enough of.
                     Hand-picked selections that define style and quality.
                 </p>
             </div>
@@ -30,7 +30,7 @@ const BestSeller = () => {
                 {bestSeller.length > 0 ? (
                     bestSeller.map((item) => (
                         <div key={item._id} className="group">
-                            <ProductItem 
+                            <ProductItem
                                 id={item._id}
                                 name={item.name}
                                 image={item.image}
