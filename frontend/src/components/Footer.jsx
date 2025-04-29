@@ -3,24 +3,12 @@ import { Link } from 'react-router-dom';
 import { assets } from '../assets/assets';
 
 const Footer = () => {
-    const quickLinks = [
-        { name: 'Home', path: '/' },
-        { name: 'Collection', path: '/collection' },
-        { name: 'About Us', path: '/about' },
-        { name: 'Contact', path: '/contact' }
-    ];
 
-    const helpLinks = [
-        { name: 'Track Order', path: '/orders' },
-        { name: 'Returns', path: '/returns' },
-        { name: 'Shipping Info', path: '/shipping' },
-        { name: 'FAQ', path: '/faq' }
-    ];
 
     const socialLinks = [
-        { name: 'Facebook', icon: assets.facebook_icon, url: 'https://facebook.com' },
-        { name: 'Instagram', icon: assets.instagram_icon, url: 'https://instagram.com' },
-        { name: 'Twitter', icon: assets.twitter_icon, url: 'https://twitter.com' }
+        { name: 'Facebook', icon: 'https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/facebook.svg', url: 'https://facebook.com' },
+        { name: 'Instagram', icon: 'https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/instagram.svg', url: 'https://instagram.com' },
+        { name: 'Twitter', icon: 'https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/twitter.svg', url: 'https://twitter.com' }
     ];
 
     return (
