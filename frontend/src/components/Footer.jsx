@@ -145,7 +145,7 @@ const Footer = () => {
                                 />
                             </svg>
                             <a href="tel:+1234567890" className="text-gray-600 hover:text-black transition-colors !text-sm">
-                                +1 (234) 567-890
+                                +91-8805910192
                             </a>
                         </div>
                         <div className="flex items-center !gap-3">
@@ -168,7 +168,7 @@ const Footer = () => {
                                 />
                             </svg>
                             <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-black transition-colors !text-sm">
-                                123 Shopping Street, NY 10001
+                                123 Shopping Street,  10001
                             </a>
                         </div>
                     </div>

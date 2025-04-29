@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { assets } from '../assets/assets';
 
 const NewsletterBox = () => {
     const [email, setEmail] = useState('');
@@ -7,7 +6,7 @@ const NewsletterBox = () => {
 
     const onSubmitHandler = (e) => {
         e.preventDefault();
-        if (email) {
+        if (email && email.includes('@')) {
             setStatus('success');
             setEmail('');
             setTimeout(() => setStatus(''), 3000); // Clear status after 3 seconds
@@ -17,18 +16,18 @@ const NewsletterBox = () => {
     };
 
     return (
-        <div className="!py-24 !px-4 bg-gray-50">
+        <div className="!py-24 !px-4 !bg-gray-50">
             <div className="!max-w-6xl !mx-auto">
-                <div className="grid md:grid-cols-2 !gap-12 items-center">
+                <div className="!grid !md:grid-cols-2 !gap-12 !items-center">
                     {/* Left Content */}
-                    <div className="text-left !space-y-6">
-                        <h2 className="text-4xl md:text-5xl font-bold !leading-tight text-gray-900">
+                    <div className="!text-left !space-y-6">
+                        <h2 className="!text-4xl !md:text-5xl !font-bold !leading-tight !text-gray-900">
                             Get
-                            <span className="text-orange-500 !mx-2">20% off</span>
+                            <span className="!text-orange-500 !mx-2">20% off</span>
                             on your first order
                         </h2>
 
-                        <p className="text-gray-600 !text-lg !leading-relaxed">
+                        <p className="!text-gray-600 !text-lg !leading-relaxed">
                             Join our newsletter and discover new collections and exclusive offers before anyone else.
                         </p>
 
@@ -40,10 +39,10 @@ const NewsletterBox = () => {
                                 'Seasonal updates and style tips',
                                 'Early access to sales'
                             ].map((benefit, index) => (
-                                <div key={index} className="flex items-center !gap-3">
-                                    <div className="!w-5 !h-5 rounded-full bg-green-100 flex items-center justify-center">
+                                <div key={index} className="!flex !items-center !gap-3">
+                                    <div className="!w-5 !h-5 !rounded-full !bg-green-100 !flex !items-center !justify-center">
                                         <svg
-                                            className="!w-3 !h-3 text-green-600"
+                                            className="!w-3 !h-3 !text-green-600"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -56,7 +55,7 @@ const NewsletterBox = () => {
                                             />
                                         </svg>
                                     </div>
-                                    <span className="text-gray-600">{benefit}</span>
+                                    <span className="!text-gray-600">{benefit}</span>
                                 </div>
                             ))}
                         </div>
@@ -64,20 +63,20 @@ const NewsletterBox = () => {
 
                     {/* Right Form */}
                     <div className="!space-y-8">
-                        <div className="bg-white !p-8 rounded-2xl shadow-sm border border-gray-100">
-                            <h3 className="text-gray-900 text-2xl font-bold !mb-6">
+                        <div className="!bg-white !p-8 !rounded-2xl !shadow-lg !border !border-gray-100">
+                            <h3 className="!text-gray-900 !text-2xl !font-bold !mb-6">
                                 Subscribe to Newsletter
                             </h3>
 
-                            <form onSubmit={onSubmitHandler} className="!space-y-6">
+                            <div className="!space-y-6">
                                 <div>
                                     <label
                                         htmlFor="email"
-                                        className="block text-gray-700 text-sm font-medium !mb-2"
+                                        className="!block !text-gray-700 !text-sm !font-medium !mb-2"
                                     >
                                         Email Address
                                     </label>
-                                    <div className="relative">
+                                    <div className="!relative">
                                         <input
                                             type="email"
                                             id="email"
@@ -85,15 +84,15 @@ const NewsletterBox = () => {
                                             onChange={(e) => setEmail(e.target.value)}
                                             placeholder="Enter your email"
                                             className={`
-                                                !w-full !px-4 !py-3 !pl-12 rounded-lg border
-                                                text-gray-800 placeholder-gray-400
-                                                focus:outline-none focus:ring-2 focus:ring-orange-500
-                                                ${status === 'error' ? '!border-red-500' : 'border-gray-200'}
+                                                !w-full !px-4 !py-3 !pl-12 !rounded-lg !border
+                                                !text-gray-800 !placeholder-gray-400
+                                                !focus:outline-none !focus:ring-2 !focus:ring-orange-500
+                                                ${status === 'error' ? '!border-red-500' : '!border-gray-200'}
                                             `}
                                         />
-                                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                                        <div className="!absolute !left-4 !top-1/2 !transform !-translate-y-1/2">
                                             <svg
-                                                className="!w-5 !h-5 text-gray-400"
+                                                className="!w-5 !h-5 !text-gray-400"
                                                 fill="none"
                                                 stroke="currentColor"
                                                 viewBox="0 0 24 24"
@@ -110,16 +109,16 @@ const NewsletterBox = () => {
                                 </div>
 
                                 <button
-                                    type="submit"
-                                    className="!w-full bg-black text-white font-medium !py-3 rounded-lg
-                                             hover:bg-gray-900 transition-colors duration-300"
+                                    onClick={onSubmitHandler}
+                                    className="!w-full !bg-orange-500 !text-white !font-medium !py-3 !rounded-lg
+                                             !hover:bg-orange-600 !transition-colors !duration-300 !shadow-md"
                                 >
                                     Subscribe Now
                                 </button>
 
                                 {/* Status Messages */}
                                 {status === 'success' && (
-                                    <div className="flex items-center !gap-2 text-green-600 text-sm">
+                                    <div className="!flex !items-center !gap-2 !text-green-600 !text-sm !bg-green-50 !p-3 !rounded-lg">
                                         <svg
                                             className="!w-4 !h-4"
                                             fill="none"
@@ -138,7 +137,7 @@ const NewsletterBox = () => {
                                 )}
 
                                 {status === 'error' && (
-                                    <div className="flex items-center !gap-2 text-red-500 text-sm !mt-2">
+                                    <div className="!flex !items-center !gap-2 !text-red-500 !text-sm !mt-2 !bg-red-50 !p-3 !rounded-lg">
                                         <svg
                                             className="!w-4 !h-4"
                                             fill="none"
@@ -155,23 +154,23 @@ const NewsletterBox = () => {
                                         <span>Please enter a valid email</span>
                                     </div>
                                 )}
-                            </form>
+                            </div>
 
                             {/* Privacy Notice */}
-                            <p className="text-gray-500 text-xs text-center !mt-6">
+                            <p className="!text-gray-500 !text-xs !text-center !mt-6">
                                 By subscribing, you agree to our Privacy Policy and consent to receive updates from our company.
                             </p>
                         </div>
 
                         {/* Trust Badges */}
-                        <div className="flex justify-center !gap-6">
+                        <div className="!flex !justify-center !gap-6">
                             {['Secure', 'Trusted', 'No Spam'].map((badge, index) => (
                                 <div
                                     key={index}
-                                    className="flex items-center !gap-2 bg-gray-700 !px-4 !py-2 rounded-full"
+                                    className="!flex !items-center !gap-2 !bg-gray-800 !px-4 !py-2 !rounded-full !shadow-md"
                                 >
                                     <svg
-                                        className="!w-4 !h-4 text-yellow-400"
+                                        className="!w-4 !h-4 !text-yellow-400"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -183,7 +182,7 @@ const NewsletterBox = () => {
                                             d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                                         />
                                     </svg>
-                                    <span className="text-sm text-gray-300">{badge}</span>
+                                    <span className="!text-sm !text-white">{badge}</span>
                                 </div>
                             ))}
                         </div>
