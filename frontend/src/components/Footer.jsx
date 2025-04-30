@@ -168,7 +168,7 @@ const Footer = () => {
                                 />
                             </svg>
                             <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-black transition-colors !text-sm">
-                                123 Shopping Street,  10001
+                                123 Shopping Street, IN 10001
                             </a>
                         </div>
                     </div>
@@ -177,7 +177,7 @@ const Footer = () => {
                 {/* Bottom Bar */}
                 <div className="border-t border-gray-200 !mt-12 !pt-6 flex flex-col md:flex-row justify-between items-center !gap-4">
                     <p className="text-gray-600 !text-sm">
-                        © {new Date().getFullYear()} ShopNGo. All rights reserved.
+                        © {new Date().getFullYear()} ShopNGo. All rights reserved. Mohammed Faizan Patel
                     </p>
                     <div className="flex !gap-6">
                         <Link
