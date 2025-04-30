@@ -1,12 +1,14 @@
 # 🛍️ ShopNGo
 
-**ShopNGo** is an intuitive and responsive eCommerce platform built with **React**. It offers users a seamless shopping experience, from browsing products to managing carts and placing orders—it’s built for simplicity and speed.
+**ShopNGo** is an intuitive and responsive eCommerce platform built with the **MERN stack** (MongoDB, Express.js, React, Node.js). It delivers a seamless shopping experience—from product browsing to cart management and checkout. Designed for performance, responsiveness, and simplicity.
+
+---
 
 ## 🚧 Current Status
 
 > ⚠️ This project is still in progress.  
-> Some features are incomplete or in testing mode.  
-> Contributions and feedback are welcome as it's being built!
+> Some features are incomplete or under testing.  
+> Contributions and feedback are welcome!
 
 ---
 
@@ -18,22 +20,23 @@
 
 ## 🚀 Features
 
-- 🛒 Modern and minimalistic product listing
-- 🔍 Product filtering and search functionality
-- 🧺 Shopping cart with item management
-- 💳 Checkout flow (UI only, mock backend)
-- 📱 Responsive design for all devices
-- ⚛️ Built with React and React Router
+- 🛒 Product listing with clean and modern UI  
+- 🔍 Product filtering and real-time search  
+- 🧺 Shopping cart with item quantity management  
+- 💳 Checkout process (UI flow, backend integration in progress)  
+- 📱 Fully responsive across mobile, tablet, and desktop  
+- 🧩 RESTful APIs using Express.js and Node.js  
+- 🗃️ MongoDB for product and cart data storage  
 
 ---
 
 ## 📂 Tech Stack
 
-- **Frontend**: React, JavaScript, Reactstrap, CSS
-- **State Management**: React Context / useState
-- **Routing**: React Router
-- **Icons**: React Icons
-- **Styling**: Custom CSS & Reactstrap
+- **Frontend**: React, JavaScript, Tailwind CSS, React Icons  
+- **Backend**: Node.js, Express.js  
+- **Database**: MongoDB  
+- **Routing**: React Router  
+- **State Management**: useState, React Context  
 
 ---
 
@@ -46,4 +49,3 @@ git clone https://github.com/FAIZAN101013/ShopNGo.git
 cd ShopNGo
 npm install
 npm start
-
