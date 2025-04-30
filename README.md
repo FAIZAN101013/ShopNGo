@@ -48,4 +48,4 @@ Clone the repo and install dependencies:
 git clone https://github.com/FAIZAN101013/ShopNGo.git
 cd ShopNGo
 npm install
-npm start
+npm run dev
