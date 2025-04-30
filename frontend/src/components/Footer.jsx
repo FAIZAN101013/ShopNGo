@@ -155,7 +155,7 @@ const Footer = () => {
                                 />
                             </svg>
                             <a href="mailto:info@shopngo.com" className="text-gray-600 hover:text-black transition-colors !text-sm">
-                                info@shopngo.com
+                                info@shopngo.com(faizan.m.patel10@gmail.com)
                             </a>
                         </div>
                         <div className="flex items-center !gap-3">
