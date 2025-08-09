@@ -10,6 +10,8 @@ import PlaceOrder from './pages/PlaceOrder'
 import Orders from './pages/Orders'
 import Cart from './pages/Cart'
 import Login from './pages/Login'
+import Register from './pages/Register'
+import Profile from './pages/Profile'
 import NavBar from './components/Navbar'
 import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
@@ -29,8 +31,10 @@ const App = () => {
         <Route path="/product/:productId" element={<Product />} />
         <Route path='/cart' element={<Cart />} />
         <Route path='/login' element={<Login />} />
+        <Route path='/register' element={<Register />} />
         <Route path='/placeorder' element={<PlaceOrder />} />
         <Route path='/orders' element={<Orders />} />
+        <Route path='/profile' element={<Profile />} />
       </Routes>
       <Footer />
 

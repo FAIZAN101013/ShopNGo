@@ -30,6 +30,16 @@ const Cart = () => {
 
   const cartItemsWithDetails = getCartItemsWithDetails();
 
+  const handleStripePay = () => {
+    const stripeLink = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
+    if (stripeLink) {
+      window.location.href = stripeLink;
+    } else {
+      // Fallback to place order page if no payment link configured
+      window.location.href = '/placeorder?method=stripe';
+    }
+  };
+
   return (
     <div className="container mx-auto !px-4 !py-8">
       <Title text1={"YOUR"} text2={"CART"} />
@@ -42,7 +52,7 @@ const Cart = () => {
           <p className="text-gray-500 !text-base sm:!text-lg !mb-4">Your cart is empty</p>
           <a
             href="/collection"
-            className="inline-block !px-4 !py-2 sm:!px-6 sm:!py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors !text-sm sm:!text-base"
+            className="inline-block !px-4 !py-2 sm:!px-6 sm:!py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors !text-sm sm:!text-base"
           >
             Continue Shopping
           </a>
@@ -153,10 +163,19 @@ const Cart = () => {
               </div>
 
               <button
-                onClick={() => window.location.href = '/checkout'}
+                onClick={() => window.location.href = '/placeorder'}
                 className="!w-full bg-black text-white !py-2 sm:!py-3 rounded-lg hover:bg-gray-800 transition-colors !text-sm sm:!text-base"
               >
                 Proceed to Checkout
+              </button>
+
+              <button
+                onClick={handleStripePay}
+                className="!w-full !mt-3 flex items-center justify-center !gap-2 bg-[#635BFF] text-white !py-2 sm:!py-3 rounded-lg hover:bg-[#5561F5] transition-colors !text-sm sm:!text-base"
+                title="Pay securely with Stripe"
+              >
+                <img src={assets.stripe_logo} alt="Stripe" className="!w-12 !h-auto" />
+                Pay with Stripe
               </button>
             </div>
           </div>

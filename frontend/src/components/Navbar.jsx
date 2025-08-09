@@ -2,6 +2,7 @@ import React, { useContext, useState } from 'react';
 import { assets } from '../assets/assets';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
+import { toast } from 'react-toastify';
 
 const NavBar = () => {
   const [visible, setVisible] = useState(false);
@@ -13,7 +14,8 @@ const NavBar = () => {
     { path: "/", label: "Home" },
     { path: "/collection", label: "Collection" },
     { path: "/about", label: "About" },
-    { path: "/contact", label: "Contact" }
+    { path: "/contact", label: "Contact" },
+    { path: "/orders", label: "My Orders" }
   ];
 
   const handleSearchClick = () => {
@@ -23,6 +25,15 @@ const NavBar = () => {
       navigate('/collection');
       setTimeout(() => setShowSearch(true), 100);
     }
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('user');
+      toast.success('Logged out');
+    } catch {}
+    setVisible(false);
+    navigate('/login');
   };
 
   return (
@@ -84,10 +95,10 @@ const NavBar = () => {
                     My Profile
                   </Link>
                   <Link to="/orders" className="block !px-4 !py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    Orders
+                    My Orders
                   </Link>
                   <div className="!h-[1px] bg-gray-100 !my-1"></div>
-                  <button className="!w-full text-left !px-4 !py-2 text-sm text-red-600 hover:bg-red-50">
+                  <button onClick={handleLogout} className="!w-full text-left !px-4 !py-2 text-sm text-red-600 hover:bg-red-50">
                     Logout
                   </button>
                 </div>
