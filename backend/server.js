@@ -2,7 +2,11 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 
+import connectDB from "./config/db.js";
+
 dotenv.config(); // this reads env file for all the variables
+
+connectDB(); // connect to MongoDB
 
 const app = express(); // this the main this what creates and starts the app
 
