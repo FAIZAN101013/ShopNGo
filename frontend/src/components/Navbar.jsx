@@ -31,30 +31,30 @@ const NavBar = () => {
     try {
       localStorage.removeItem('user');
       toast.success('Logged out');
-    } catch {}
+    } catch { /* storage blocked - the redirect below still logs the user out */ }
     setVisible(false);
     navigate('/login');
   };
 
   return (
-    <nav className="bg-white sticky top-0 z-50">
-      <div className="!max-w-7xl !mx-auto !px-4">
-        <div className="flex justify-between items-center !h-20">
+    <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
+      <div>
+        <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <Link to="/" className="flex-shrink-0">
-            <img src={assets.logo} className="!w-36 !h-auto" alt="Logo" />
+          <Link to="/" className="shrink-0">
+            <img src={assets.logo} className="w-36 h-auto" alt="Logo" />
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center !gap-8">
+          <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}
                 className={({ isActive }) =>
-                  `relative text-sm font-medium !py-2 transition-colors
+                  `relative text-sm font-medium py-2 transition-colors
                   ${isActive
-                    ? 'text-black after:absolute after:bottom-0 after:left-0 after:!w-full after:!h-0.5 after:bg-black'
+                    ? 'text-black after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-black'
                     : 'text-gray-500 hover:text-black'
                   }`
                 }
@@ -65,40 +65,40 @@ const NavBar = () => {
           </div>
 
           {/* Right Icons Section */}
-          <div className="flex items-center !gap-6">
+          <div className="flex items-center gap-6">
             {/* Search Icon */}
             <button
               onClick={handleSearchClick}
-              className="!w-10 !h-10 flex items-center justify-center rounded-full hover:bg-gray-50 transition-colors"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 transition-colors"
             >
               <img
                 src={assets.search_icon}
-                className="!w-5 !h-5"
+                className="w-5 h-5"
                 alt="Search"
               />
             </button>
 
             {/* Profile Dropdown */}
             <div className="relative group">
-              <button className="!w-10 !h-10 flex items-center justify-center rounded-full hover:bg-gray-50 transition-colors">
+              <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 transition-colors">
                 <img
                   src={assets.profile_icon}
-                  className="!w-6 !h-6"
+                  className="w-6 h-6"
                   alt="Profile"
                 />
               </button>
 
               {/* Dropdown Menu */}
-              <div className="absolute right-0 !mt-1 !w-48 bg-white rounded-lg shadow-lg overflow-hidden opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 origin-top-right">
-                <div className="!py-1">
-                  <Link to="/profile" className="block !px-4 !py-2 text-sm text-gray-700 hover:bg-gray-50">
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black/5 overflow-hidden invisible opacity-0 scale-95 group-hover:visible group-hover:opacity-100 group-hover:scale-100 group-focus-within:visible group-focus-within:opacity-100 group-focus-within:scale-100 transition-all duration-200 origin-top-right">
+                <div className="py-1">
+                  <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                     My Profile
                   </Link>
-                  <Link to="/orders" className="block !px-4 !py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  <Link to="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                     My Orders
                   </Link>
-                  <div className="!h-[1px] bg-gray-100 !my-1"></div>
-                  <button onClick={handleLogout} className="!w-full text-left !px-4 !py-2 text-sm text-red-600 hover:bg-red-50">
+                  <div className="h-[1px] bg-gray-100 my-1"></div>
+                  <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                     Logout
                   </button>
                 </div>
@@ -108,15 +108,15 @@ const NavBar = () => {
             {/* Cart Icon */}
             <Link
               to="/cart"
-              className="relative !w-10 !h-10 flex items-center justify-center rounded-full hover:bg-gray-50 transition-colors"
+              className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 transition-colors"
             >
               <img
                 src={assets.cart_icon}
-                className="!w-6 !h-6"
+                className="w-6 h-6"
                 alt="Cart"
               />
               {getCartItemsCount() > 0 && (
-                <span className="absolute !-top-1 !-right-1 !min-w-[20px] !h-5 flex items-center justify-center bg-black text-white text-xs font-medium rounded-full !px-1.5">
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center bg-black text-white text-xs font-medium rounded-full px-1.5">
                   {getCartItemsCount()}
                 </span>
               )}
@@ -125,11 +125,11 @@ const NavBar = () => {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setVisible(true)}
-              className="!w-10 !h-10 md:hidden flex items-center justify-center rounded-full hover:bg-gray-50 transition-colors"
+              className="w-10 h-10 md:hidden flex items-center justify-center rounded-full hover:bg-gray-50 transition-colors"
             >
               <img
                 src={assets.menu_icon}
-                className="!w-5 !h-5"
+                className="w-5 h-5"
                 alt="Menu"
               />
             </button>
@@ -139,29 +139,29 @@ const NavBar = () => {
 
       {/* Mobile Menu */}
       {visible && (
-        <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm z-50 md:hidden">
-          <div className="absolute right-0 top-0 !h-full !w-64 bg-white">
-            <div className="flex justify-between items-center !px-4 !py-4">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 md:hidden">
+          <div className="absolute right-0 top-0 h-full w-64 bg-white">
+            <div className="flex justify-between items-center px-4 py-4">
               <h2 className="font-medium text-gray-900">Menu</h2>
               <button
                 onClick={() => setVisible(false)}
-                className="!w-8 !h-8 flex items-center justify-center rounded-full hover:bg-gray-50"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-50"
               >
                 <img
                   src={assets.cross_icon}
-                  className="!w-4 !h-4"
+                  className="w-4 h-4"
                   alt="Close"
                 />
               </button>
             </div>
-            <div className="!py-2">
+            <div className="py-2">
               {navLinks.map((link) => (
                 <NavLink
                   key={link.path}
                   to={link.path}
                   onClick={() => setVisible(false)}
                   className={({ isActive }) =>
-                    `block !px-4 !py-3 text-sm ${isActive
+                    `block px-4 py-3 text-sm ${isActive
                       ? 'bg-gray-50 text-black font-medium'
                       : 'text-gray-600 hover:bg-gray-50'
                     }`

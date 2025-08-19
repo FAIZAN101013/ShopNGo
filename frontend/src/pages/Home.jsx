@@ -9,7 +9,7 @@ import NewsletterBox from '../components/NewsletterBox';
 
 const Home = () => {
   return (
-    <div className="!space-y-8">
+    <div className="space-y-8">
       <Hero />
       <LatestCollection />
       <BestSeller />

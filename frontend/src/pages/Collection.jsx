@@ -122,24 +122,24 @@ const Collection = () => {
   }, [sortType]);
 
   return (
-    <div className='flex flex-col sm:flex-row !gap-6 sm:!gap-10 !pt-10 !px-4'>
+    <div className='flex flex-col sm:flex-row gap-6 sm:gap-10 pt-10 px-4'>
       {/* Filter Section */}
-      <div className='!min-w-[240px] bg-white !p-4 rounded-lg shadow-sm'>
+      <div className='min-w-[240px] bg-white p-4 rounded-lg shadow-sm'>
         <p onClick={() => setShowFilter(!showFilter)}
-          className='!my-4 text-xl flex items-center cursor-pointer !gap-2 hover:text-gray-700 transition-colors'>
+          className='my-4 text-xl flex items-center cursor-pointer gap-2 hover:text-gray-700 transition-colors'>
           <span className="font-medium">FILTERS</span>
-          <img className={`!h-3 sm:hidden transform transition-transform ${showFilter ? 'rotate-180' : ''}`}
+          <img className={`h-3 sm:hidden transform transition-transform ${showFilter ? 'rotate-180' : ''}`}
             src={assets.dropdown_icon} alt='Toggle' />
         </p>
 
         {/* Price Range Filter */}
-        <div className={`border border-gray-200 rounded-lg !p-4 !mb-4 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='!mb-4 text-sm font-medium text-gray-800 uppercase'>Price Range</p>
-          <div className='flex flex-col !gap-3 text-sm text-gray-600'>
+        <div className={`border border-gray-200 rounded-lg p-4 mb-4 ${showFilter ? '' : 'hidden'} sm:block`}>
+          <p className='mb-4 text-sm font-medium text-gray-800 uppercase'>Price Range</p>
+          <div className='flex flex-col gap-3 text-sm text-gray-600'>
             {priceRanges.map((range) => (
-              <label key={range.value} className='flex items-center !gap-2 cursor-pointer hover:text-gray-800'>
+              <label key={range.value} className='flex items-center gap-2 cursor-pointer hover:text-gray-800'>
                 <input
-                  className='!w-4 !h-4 accent-black'
+                  className='w-4 h-4 accent-black'
                   type='radio'
                   name='priceRange'
                   value={range.value}
@@ -153,13 +153,13 @@ const Collection = () => {
         </div>
 
         {/* Category Filter */}
-        <div className={`border border-gray-200 rounded-lg !p-4 !mb-4 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='!mb-4 text-sm font-medium text-gray-800 uppercase'>Categories</p>
-          <div className='flex flex-col !gap-3 text-sm text-gray-600'>
+        <div className={`border border-gray-200 rounded-lg p-4 mb-4 ${showFilter ? '' : 'hidden'} sm:block`}>
+          <p className='mb-4 text-sm font-medium text-gray-800 uppercase'>Categories</p>
+          <div className='flex flex-col gap-3 text-sm text-gray-600'>
             {categories.map((cat) => (
-              <label key={cat.value} className='flex items-center !gap-2 cursor-pointer hover:text-gray-800'>
+              <label key={cat.value} className='flex items-center gap-2 cursor-pointer hover:text-gray-800'>
                 <input
-                  className='!w-4 !h-4 accent-black'
+                  className='w-4 h-4 accent-black'
                   type='checkbox'
                   value={cat.value}
                   onChange={toggleCategory}
@@ -172,13 +172,13 @@ const Collection = () => {
         </div>
 
         {/* Type Filter */}
-        <div className={`border border-gray-200 rounded-lg !p-4 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='!mb-4 text-sm font-medium text-gray-800 uppercase'>Type</p>
-          <div className='flex flex-col !gap-3 text-sm text-gray-600'>
+        <div className={`border border-gray-200 rounded-lg p-4 ${showFilter ? '' : 'hidden'} sm:block`}>
+          <p className='mb-4 text-sm font-medium text-gray-800 uppercase'>Type</p>
+          <div className='flex flex-col gap-3 text-sm text-gray-600'>
             {subCategories.map(({ value, label }) => (
-              <label key={value} className='flex items-center !gap-2 cursor-pointer hover:text-gray-800'>
+              <label key={value} className='flex items-center gap-2 cursor-pointer hover:text-gray-800'>
                 <input
-                  className='!w-4 !h-4 accent-black'
+                  className='w-4 h-4 accent-black'
                   type='checkbox'
                   value={value}
                   onChange={toggleSubCategory}
@@ -193,11 +193,11 @@ const Collection = () => {
 
       {/* Products Section */}
       <div className='flex-1'>
-        <div className='flex justify-between items-center !mb-6'>
+        <div className='flex justify-between items-center mb-6'>
           <Title text1={'ALL'} text2={'COLLECTIONS'} />
           <select
             onChange={(e) => setSortType(e.target.value)}
-            className='border-2 border-gray-200 rounded-lg text-sm !px-4 !py-2 outline-none cursor-pointer hover:border-gray-300 transition-colors'
+            className='border-2 border-gray-200 rounded-lg text-sm px-4 py-2 outline-none cursor-pointer hover:border-gray-300 transition-colors'
           >
             <option value='relevant'>Sort by: Relevant</option>
             <option value='low-high'>Sort by: Low to High</option>
@@ -206,7 +206,7 @@ const Collection = () => {
         </div>
 
         {/* Products Grid */}
-        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 !gap-6'>
+        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
           {filteredProducts.length > 0 ? (
             filteredProducts.map((item) => (
               <ProductItem
@@ -218,7 +218,7 @@ const Collection = () => {
               />
             ))
           ) : (
-            <div className='col-span-full text-center !py-20 text-gray-500'>
+            <div className='col-span-full text-center py-20 text-gray-500'>
               No products found matching your criteria
             </div>
           )}

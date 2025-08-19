@@ -1,53 +1,46 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Prata&display=swap');
 @import "tailwindcss";
-/* Reset all default styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: inherit;
+
+/* Make Outfit the default sans font, so `font-sans` and the body both use it. */
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Prata", ui-serif, Georgia, serif;
 }
 
-/* Reset body */
+/*
+  Tailwind's preflight already resets margin, padding and box-sizing.
+  Do NOT add a `* { margin: 0; padding: 0 }` rule here: unlayered CSS beats
+  Tailwind's @layer utilities, which silently kills every m-* and p-* class
+  and forces `!important` on all of them.
+*/
+
 body {
-  font-family: outfit ; /* Change as needed */
   background-color: white;
-  color: black;
+  color: #171717;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-right: 7px;
-  padding-left: 7px;
 }
 
-/* Reset links */
 a {
   text-decoration: none;
   color: inherit;
 }
 
-/* Active NavLink */
-a.active hr {
-  display: block;
-}
-
 .prata-regular {
-  font-family: "Prata", serif;
+  font-family: var(--font-display);
   font-weight: 400;
   font-style: normal;
 }
 
-
-@media(max-width: 640px){
-  a.active{
-    background-color: black;
-    color : white;
+/* Respect users who ask the OS to reduce motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
-
-.space {
-  margin-top: 50px;
-  margin-bottom: 50px;
-}
-

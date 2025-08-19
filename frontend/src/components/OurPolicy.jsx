@@ -34,32 +34,32 @@ const OurPolicy = () => {
   ];
 
   return (
-    <div className="!py-20 !px-4 bg-white">
-      <div className="!max-w-7xl !mx-auto">
+    <div className="py-20 px-4 bg-white">
+      <div className="max-w-7xl mx-auto">
         {/* Title Section */}
-        <div className="text-center !mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 !mb-4">Why Choose Us</h2>
-          <p className="text-gray-600 !max-w-2xl !mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Us</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
             We're committed to providing the best shopping experience with these amazing benefits
           </p>
         </div>
 
         {/* Policies Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 !gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {policies.map((policy, index) => (
             <div
               key={index}
-              className={`${policy.bgColor} rounded-2xl !p-6 hover:shadow-lg transition-all duration-300 group`}
+              className={`${policy.bgColor} rounded-2xl p-6 hover:shadow-lg transition-all duration-300 group`}
             >
-              <div className="!mb-6">
-                <div className="!w-16 !h-16 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
-                  <img src={policy.icon} className="!w-8 !h-8" alt={policy.title} />
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+                  <img src={policy.icon} className="w-8 h-8" alt={policy.title} />
                 </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 !mb-3">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
                 {policy.title}
               </h3>
-              <p className="text-gray-600 text-sm !leading-relaxed">
+              <p className="text-gray-600 text-sm leading-relaxed">
                 {policy.desc}
               </p>
             </div>
