@@ -111,7 +111,7 @@ always know where to look.
 
 ```env
 PORT=4000
-MONGODB_URI="mongodb+srv://user:password@cluster.mongodb.net/shopngo"
+MONGODB_URI="mongodb+srv://USERNAME:PASSWORD@CLUSTER.example.invalid/shopngo"
 ```
 
 **Why it exists:**
@@ -136,10 +136,14 @@ https://github.com/FAIZAN101013/ShopNGo?tab=readme
 └─┬──┘  └───┬────┘└────────┬──────────┘└────┬────┘
 protocol  server      which thing        options
 
-mongodb+srv://faizan:pass123@shopngo.mongodb.net/shopngo?retryWrites=true
-└─────┬─────┘└──────┬──────┘└───────┬─────────┘└───┬──┘└──────┬────────┘
-   protocol  username:password    server        WHICH DB    options
+mongodb+srv://USERNAME:PASSWORD@CLUSTER.example.invalid/shopngo?retryWrites=true
+└─────┬──────┘└───────┬───────┘└──────────┬───────────┘└──┬───┘└───────┬───────┘
+  protocol    username:password        server         WHICH DB      options
 ```
+
+> The host above is deliberately fake. Never write a real-looking connection
+> string in a file that goes to GitHub — even as an example. GitHub scans every
+> push for credential patterns and will raise a security alert on it.
 
 **One cluster can hold many databases.** So I must say which one. If I forget
 the `/shopngo` part, MongoDB uses a default database called `test`. It still
