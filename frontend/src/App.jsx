@@ -12,15 +12,18 @@ import Cart from './pages/Cart'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Profile from './pages/Profile'
+import NotFound from './pages/NotFound'
 import NavBar from './components/Navbar'
 import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
-import { ToastContainer, toast } from 'react-toastify';
+import ScrollToTop from './components/ScrollToTop'
+import { ToastContainer } from 'react-toastify';
 
 const App = () => {
   return (
-    <div className="!px-4 !sm:px-[5vw] md:px-[7vw] lg:px-[9vw] xl:px-[25vw]">
-      <ToastContainer />
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <ToastContainer position="bottom-right" autoClose={2500} newestOnTop />
+      <ScrollToTop />
       <NavBar />
       <SearchBar />
       <Routes>
@@ -35,6 +38,7 @@ const App = () => {
         <Route path='/placeorder' element={<PlaceOrder />} />
         <Route path='/orders' element={<Orders />} />
         <Route path='/profile' element={<Profile />} />
+        <Route path='*' element={<NotFound />} />
       </Routes>
       <Footer />
 
