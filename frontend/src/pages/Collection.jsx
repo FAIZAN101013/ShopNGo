@@ -1,18 +1,23 @@
-import React, { useContext, useEffect, useCallback } from 'react';
-import { useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ShopContext } from '../context/ShopContext';
 import { assets } from '../assets/assets';
 import Title from '../components/Title';
 import ProductItem from '../components/ProductItem';
+import Pagination from '../components/Pagination';
+
+const PRODUCTS_PER_PAGE = 12;
 
 const Collection = () => {
   const { products, search, showSearch } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
-  const [filteredProducts, setFilteredProducts] = useState(products);
 
   const [category, setCategory] = useState([]);
   const [subCategory, setSubCategory] = useState([]);
   const [sortType, setSortType] = useState('relevant');
+  const [priceRange, setPriceRange] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const gridTopRef = useRef(null);
 
   const categories = [
     { value: 'Men', label: 'Men' },
@@ -38,7 +43,6 @@ const Collection = () => {
     { value: 'Hats', label: 'Hats & Caps' }
   ];
 
-  const [priceRange, setPriceRange] = useState('all');
   const priceRanges = [
     { value: 'all', label: 'All Prices' },
     { value: '0-50', label: 'Under $50' },
@@ -63,63 +67,57 @@ const Collection = () => {
     }
   };
 
-  const applyFilter = useCallback(() => {
-    let productsCopy = products.slice();
-    
+  // Filtering and sorting are derived from the inputs rather than stored in
+  // their own state. Keeping a second copy in state meant a filter change
+  // rebuilt the list and silently threw away the chosen sort order.
+  const filteredProducts = useMemo(() => {
+    let list = products.slice();
+
     if (showSearch && search) {
-      productsCopy = productsCopy.filter((item) => 
+      list = list.filter((item) =>
         item.name.toLowerCase().includes(search.toLowerCase())
       );
     }
 
     if (category.length > 0) {
-      productsCopy = productsCopy.filter((item) => 
-        category.includes(item.category)
-      );
+      list = list.filter((item) => category.includes(item.category));
     }
 
     if (subCategory.length > 0) {
-      productsCopy = productsCopy.filter((item) => 
-        subCategory.includes(item.subCategory)
-      );
+      list = list.filter((item) => subCategory.includes(item.subCategory));
     }
 
     if (priceRange !== 'all') {
       const [min, max] = priceRange.split('-').map(Number);
-      productsCopy = productsCopy.filter((item) => {
-        if (max) {
-          return item.price >= min && item.price <= max;
-        } else {
-          return item.price >= min;
-        }
-      });
+      list = list.filter((item) =>
+        max ? item.price >= min && item.price <= max : item.price >= min
+      );
     }
 
-    setFilteredProducts(productsCopy);
-  }, [products, category, subCategory, search, showSearch, priceRange]);
+    if (sortType === 'low-high') list.sort((a, b) => a.price - b.price);
+    if (sortType === 'high-low') list.sort((a, b) => b.price - a.price);
 
-  const sortProducts = () => {
-    let fpCopy = filteredProducts.slice();
-    switch (sortType) {
-      case 'low-high':
-        setFilteredProducts(fpCopy.sort((a, b) => a.price - b.price));
-        break;
-      case 'high-low':
-        setFilteredProducts(fpCopy.sort((a, b) => b.price - a.price));
-        break;
-      default:
-        applyFilter();
-        break;
-    }
+    return list;
+  }, [products, search, showSearch, category, subCategory, priceRange, sortType]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+
+  // Narrowing the filters can leave you stranded on a page that no longer
+  // exists (page 4 of a result set that is now one page long), so go back to
+  // the first page whenever the result set changes.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, showSearch, category, subCategory, priceRange, sortType]);
+
+  const safePage = Math.min(currentPage, totalPages);
+  const firstIndex = (safePage - 1) * PRODUCTS_PER_PAGE;
+  const visibleProducts = filteredProducts.slice(firstIndex, firstIndex + PRODUCTS_PER_PAGE);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    // Without this you land halfway down the next page of results.
+    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-
-  useEffect(() => {
-    applyFilter();
-  }, [category, subCategory, applyFilter, search, showSearch]);
-
-  useEffect(() => {
-    sortProducts();
-  }, [sortType]);
 
   return (
     <div className='flex flex-col sm:flex-row gap-6 sm:gap-10 pt-10 px-4'>
@@ -192,23 +190,31 @@ const Collection = () => {
       </div>
 
       {/* Products Section */}
-      <div className='flex-1'>
-        <div className='flex justify-between items-center mb-6'>
+      <div className='flex-1' ref={gridTopRef}>
+        <div className='flex flex-wrap gap-4 justify-between items-center mb-6'>
           <Title text1={'ALL'} text2={'COLLECTIONS'} />
           <select
+            value={sortType}
             onChange={(e) => setSortType(e.target.value)}
             className='border-2 border-gray-200 rounded-lg text-sm px-4 py-2 outline-none cursor-pointer hover:border-gray-300 transition-colors'
           >
             <option value='relevant'>Sort by: Relevant</option>
             <option value='low-high'>Sort by: Low to High</option>
-            <option value='high-high'>Sort by: High to Low</option>
+            <option value='high-low'>Sort by: High to Low</option>
           </select>
         </div>
 
+        {filteredProducts.length > 0 && (
+          <p className='mb-6 text-sm text-gray-500'>
+            Showing {firstIndex + 1}&ndash;{firstIndex + visibleProducts.length} of{' '}
+            {filteredProducts.length} products
+          </p>
+        )}
+
         {/* Products Grid */}
         <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((item) => (
+          {visibleProducts.length > 0 ? (
+            visibleProducts.map((item) => (
               <ProductItem
                 key={item._id}
                 id={item._id}
@@ -223,6 +229,12 @@ const Collection = () => {
             </div>
           )}
         </div>
+
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
       </div>
     </div>
   );
