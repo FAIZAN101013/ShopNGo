@@ -3,9 +3,11 @@ import Title from '../components/Title'
 import { ShopContext } from '../context/ShopContext'
 import { products, assets } from '../assets/assets'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom'
 
 const PlaceOrder = () => {
-  const { cartItems, currency, delivery_fee } = useContext(ShopContext)
+  const { cartItems, currency, delivery_fee, clearCart } = useContext(ShopContext)
+  const navigate = useNavigate()
 
   const cartItemsWithDetails = useMemo(() => {
     const items = []
@@ -95,8 +97,9 @@ const PlaceOrder = () => {
         localStorage.setItem('orders', JSON.stringify([order, ...existing]))
       } catch { /* localStorage unavailable - order still confirmed in UI */ }
 
+      clearCart()
       toast.success('Order placed with Cash on Delivery')
-      window.location.href = `/orders?orderId=${order.id}`
+      navigate(`/orders?orderId=${order.id}`)
     } catch {
       toast.error('Failed to place order, please try again')
     } finally {

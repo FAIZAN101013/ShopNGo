@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { products } from '../assets/assets';
 import { assets } from '../assets/assets';
@@ -6,6 +7,7 @@ import Title from '../components/Title';
 
 const Cart = () => {
   const { cartItems, updateQuantity, currency, getCartAmount } = useContext(ShopContext);
+  const navigate = useNavigate();
 
   // Helper function to get cart items with full product details
   const getCartItemsWithDetails = () => {
@@ -36,7 +38,7 @@ const Cart = () => {
       window.location.href = stripeLink;
     } else {
       // Fallback to place order page if no payment link configured
-      window.location.href = '/placeorder?method=stripe';
+      navigate('/placeorder?method=stripe');
     }
   };
 
@@ -163,7 +165,7 @@ const Cart = () => {
               </div>
 
               <button
-                onClick={() => window.location.href = '/placeorder'}
+                onClick={() => navigate('/placeorder')}
                 className="w-full bg-black text-white py-2 sm:py-3 rounded-lg hover:bg-gray-800 transition-colors text-sm sm:text-base"
               >
                 Proceed to Checkout
