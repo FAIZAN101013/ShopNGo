@@ -7,35 +7,31 @@ const OurPolicy = () => {
       icon: assets.exchange_icon,
       title: "Easy Exchange Policy",
       desc: "Hassle-free returns within 7 days of delivery",
-      bgColor: "bg-orange-50",
-      iconColor: "text-orange-600"
+      bgColor: "bg-orange-50"
     },
     {
       icon: assets.shipping_icon,
       title: "Free Shipping",
       desc: "Free delivery on orders above $100",
-      bgColor: "bg-blue-50",
-      iconColor: "text-blue-600"
+      bgColor: "bg-blue-50"
     },
     {
       icon: assets.support_img,
       title: "24/7 Customer Support",
       desc: "Dedicated support via chat and email",
-      bgColor: "bg-green-50",
-      iconColor: "text-green-600"
+      bgColor: "bg-green-50"
     },
     {
       icon: assets.quality_icon,
       title: "Quality Assured",
       desc: "Every product passes quality checks",
-      bgColor: "bg-purple-50",
-      iconColor: "text-purple-600"
+      bgColor: "bg-purple-50"
     },
   ];
 
   return (
-    <div className="py-20 px-4 bg-white">
-      <div className="max-w-7xl mx-auto">
+    <div className="py-20">
+      <div>
         {/* Title Section */}
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Us</h2>

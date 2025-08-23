@@ -9,7 +9,9 @@ import NewsletterBox from '../components/NewsletterBox';
 
 const Home = () => {
   return (
-    <div className="space-y-8">
+    // No space-y here: each section owns its own vertical rhythm, and stacking
+    // the two produced uneven gaps between them.
+    <div className="pt-8">
       <Hero />
       <LatestCollection />
       <BestSeller />

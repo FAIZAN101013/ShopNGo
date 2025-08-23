@@ -68,7 +68,7 @@ const NewsletterBox = () => {
                                 Subscribe to Newsletter
                             </h3>
 
-                            <div className="space-y-6">
+                            <form onSubmit={onSubmitHandler} noValidate className="space-y-6">
                                 <div>
                                     <label
                                         htmlFor="email"
@@ -109,7 +109,7 @@ const NewsletterBox = () => {
                                 </div>
 
                                 <button
-                                    onClick={onSubmitHandler}
+                                    type="submit"
                                     className="w-full bg-orange-500 text-white font-medium py-3 rounded-lg
                                              hover:bg-orange-600 transition-colors duration-300 shadow-md"
                                 >
@@ -117,6 +117,7 @@ const NewsletterBox = () => {
                                 </button>
 
                                 {/* Status Messages */}
+                                <div aria-live="polite">
                                 {status === 'success' && (
                                     <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 p-3 rounded-lg">
                                         <svg
@@ -154,7 +155,8 @@ const NewsletterBox = () => {
                                         <span>Please enter a valid email</span>
                                     </div>
                                 )}
-                            </div>
+                                </div>
+                            </form>
 
                             {/* Privacy Notice */}
                             <p className="text-gray-500 text-xs text-center mt-6">
