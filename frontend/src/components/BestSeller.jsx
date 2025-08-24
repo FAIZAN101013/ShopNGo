@@ -32,7 +32,7 @@ const BestSeller = () => {
                     <div key={item._id} className="relative">
                         {/* The badge used to be invisible until hover, which
                             defeated the point of labelling a best seller. */}
-                        <span className="absolute top-3 left-3 z-10 bg-black text-white text-[10px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full">
+                        <span className="pointer-events-none absolute top-3 left-3 z-10 bg-black text-white text-[10px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full">
                             Best Seller
                         </span>
                         <ProductItem
