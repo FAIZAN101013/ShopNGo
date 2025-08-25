@@ -23,7 +23,7 @@ const NewsletterBox = () => {
                     <div className="text-left space-y-6">
                         <h2 className="text-4xl md:text-5xl font-bold leading-tight text-gray-900">
                             Get
-                            <span className="text-orange-500 mx-2">20% off</span>
+                            <span className="text-accent mx-2">20% off</span>
                             on your first order
                         </h2>
 
@@ -86,7 +86,7 @@ const NewsletterBox = () => {
                                             className={`
                                                 w-full px-4 py-3 pl-12 rounded-lg border
                                                 text-gray-800 placeholder-gray-400
-                                                focus:outline-none focus:ring-2 focus:ring-orange-500
+                                                focus:outline-none focus:ring-2 focus:ring-brand
                                                 ${status === 'error' ? 'border-red-500' : 'border-gray-200'}
                                             `}
                                         />
@@ -110,8 +110,8 @@ const NewsletterBox = () => {
 
                                 <button
                                     type="submit"
-                                    className="w-full bg-orange-500 text-white font-medium py-3 rounded-lg
-                                             hover:bg-orange-600 transition-colors duration-300 shadow-md"
+                                    className="w-full bg-brand text-white font-medium py-3 rounded-lg
+                                             hover:bg-brand-hover transition-colors duration-300 shadow-md"
                                 >
                                     Subscribe Now
                                 </button>

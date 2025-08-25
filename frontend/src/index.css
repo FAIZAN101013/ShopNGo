@@ -1,10 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Prata&display=swap');
 @import "tailwindcss";
 
-/* Make Outfit the default sans font, so `font-sans` and the body both use it. */
+/*
+  The design tokens. Everything visual should come from here rather than a
+  hex value typed into a component, so a change lands in one place.
+
+  Primary actions are brand black. Orange is an accent for promotional copy
+  only, never for a button - there should be exactly one colour that means
+  "this is the main action on the page".
+*/
 @theme {
   --font-sans: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Prata", ui-serif, Georgia, serif;
+
+  --color-brand: #111111;
+  --color-brand-hover: #374151;
+  --color-accent: #f97316;
 }
 
 /*
@@ -25,6 +36,20 @@ body {
 a {
   text-decoration: none;
   color: inherit;
+}
+
+/*
+  One focus ring for the whole site. Doing it here rather than per component
+  means nothing can be missed: previously only the product card had any focus
+  style at all, so tabbing through the site showed you almost nothing.
+
+  focus-visible (not focus) is deliberate - the ring appears for keyboard and
+  assistive-tech users without flashing on every mouse click.
+*/
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
 }
 
 .prata-regular {
