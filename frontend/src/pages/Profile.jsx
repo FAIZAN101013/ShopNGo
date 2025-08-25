@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Title from '../components/Title'
 import { toast } from 'react-toastify'
+import { Link } from 'react-router-dom'
 
 const Profile = () => {
   const [user, setUser] = useState(null)
@@ -27,7 +28,7 @@ const Profile = () => {
       <div className="pt-10 pb-16">
         <Title text1={'MY'} text2={'PROFILE'} />
         <p className="text-gray-600">You are not logged in.</p>
-        <a href="/login" className="inline-block mt-4 bg-black text-white px-4 py-2 rounded-lg">Sign In</a>
+        <Link to="/login" className="inline-block mt-6 px-6 py-3 text-sm bg-black hover:bg-gray-800 text-white rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">Sign in</Link>
       </div>
     )
   }
@@ -57,7 +58,7 @@ const Profile = () => {
         <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
           <h2 className="text-xl font-medium text-gray-900 mb-4">Security</h2>
           <p className="text-sm text-gray-600">For demo, password changes are not available.</p>
-          <a href="/orders" className="inline-block mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">View My Orders</a>
+          <Link to="/orders" className="inline-block mt-4 px-5 py-2.5 text-sm bg-black hover:bg-gray-800 text-white rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">View my orders</Link>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { products } from '../assets/assets';
 import { assets } from '../assets/assets';
@@ -52,12 +52,7 @@ const Cart = () => {
             <img src={assets.cart_icon} alt="Empty Cart" className="w-10 h-10 sm:w-12 sm:h-12 opacity-50" />
           </div>
           <p className="text-gray-500 text-base sm:text-lg mb-4">Your cart is empty</p>
-          <a
-            href="/collection"
-            className="inline-block px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-          >
-            Continue Shopping
-          </a>
+          <Link to="/collection" className="inline-block px-6 py-3 text-sm bg-black hover:bg-gray-800 text-white rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">Continue shopping</Link>
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">

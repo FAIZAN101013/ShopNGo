@@ -3,7 +3,7 @@ import Title from '../components/Title'
 import { ShopContext } from '../context/ShopContext'
 import { products, assets } from '../assets/assets'
 import { toast } from 'react-toastify'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const PlaceOrder = () => {
   const { cartItems, currency, delivery_fee, clearCart } = useContext(ShopContext)
@@ -218,7 +218,7 @@ const PlaceOrder = () => {
               {submitting ? 'Placing Order...' : 'Cash on Delivery'}
             </button>
 
-            <a href="/cart" className="block text-center mt-3 text-blue-600 hover:text-blue-700 text-sm">Back to cart</a>
+            <Link to="/cart" className="block text-center mt-3 text-sm text-gray-600 underline underline-offset-4 hover:text-gray-900 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">Back to cart</Link>
           </div>
         </div>
       </div>
