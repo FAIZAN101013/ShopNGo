@@ -18,6 +18,12 @@ const NavBar = () => {
     { path: "/orders", label: "My Orders" }
   ];
 
+  const accountLinks = [
+    { path: "/profile", label: "My Profile" },
+    { path: "/login", label: "Sign In" },
+    { path: "/register", label: "Create Account" }
+  ];
+
   const handleSearchClick = () => {
     if (location.pathname.includes('collection')) {
       setShowSearch(true);
@@ -170,6 +176,33 @@ const NavBar = () => {
                   {link.label}
                 </NavLink>
               ))}
+
+              {/* Profile and sign in/out lived only in the desktop dropdown,
+                  which opens on hover - so on a phone there was no way to
+                  reach them at all. */}
+              <div className="h-[1px] bg-gray-100 my-2"></div>
+              {accountLinks.map((link) => (
+                <NavLink
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setVisible(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-3 text-sm ${isActive
+                      ? 'bg-gray-50 text-black font-medium'
+                      : 'text-gray-600 hover:bg-gray-50'
+                    }`
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
