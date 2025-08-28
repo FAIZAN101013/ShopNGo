@@ -2,11 +2,13 @@ import React, { useContext, useState } from 'react';
 import { assets } from '../assets/assets';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
+import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 
 const NavBar = () => {
   const [visible, setVisible] = useState(false);
   const { setShowSearch, getCartItemsCount } = useContext(ShopContext);
+  const { user, isLoggedIn, logout } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -18,11 +20,17 @@ const NavBar = () => {
     { path: "/orders", label: "My Orders" }
   ];
 
-  const accountLinks = [
-    { path: "/profile", label: "My Profile" },
-    { path: "/login", label: "Sign In" },
-    { path: "/register", label: "Create Account" }
-  ];
+  // The menu used to list Profile and Logout unconditionally, so it offered
+  // to sign you out when you were never signed in.
+  const accountLinks = isLoggedIn
+    ? [
+        { path: "/profile", label: "My Profile" },
+        { path: "/orders", label: "My Orders" }
+      ]
+    : [
+        { path: "/login", label: "Sign In" },
+        { path: "/register", label: "Create Account" }
+      ];
 
   const handleSearchClick = () => {
     if (location.pathname.includes('collection')) {
@@ -34,12 +42,10 @@ const NavBar = () => {
   };
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem('user');
-      toast.success('Logged out');
-    } catch { /* storage blocked - the redirect below still logs the user out */ }
+    logout();
+    toast.success('Signed out');
     setVisible(false);
-    navigate('/login');
+    navigate('/');
   };
 
   return (
@@ -97,16 +103,29 @@ const NavBar = () => {
               {/* Dropdown Menu */}
               <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black/5 overflow-hidden invisible opacity-0 scale-95 group-hover:visible group-hover:opacity-100 group-hover:scale-100 group-focus-within:visible group-focus-within:opacity-100 group-focus-within:scale-100 transition-all duration-200 origin-top-right">
                 <div className="py-1">
-                  <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    My Profile
-                  </Link>
-                  <Link to="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    My Orders
-                  </Link>
-                  <div className="h-[1px] bg-gray-100 my-1"></div>
-                  <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                    Logout
-                  </button>
+                  {isLoggedIn ? (
+                    <>
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                      {accountLinks.map((link) => (
+                        <Link key={link.path} to={link.path} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                          {link.label}
+                        </Link>
+                      ))}
+                      <div className="h-[1px] bg-gray-100 my-1"></div>
+                      <button type="button" onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                        Sign Out
+                      </button>
+                    </>
+                  ) : (
+                    accountLinks.map((link) => (
+                      <Link key={link.path} to={link.path} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                        {link.label}
+                      </Link>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -196,13 +215,15 @@ const NavBar = () => {
                   {link.label}
                 </NavLink>
               ))}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-              >
-                Logout
-              </button>
+              {isLoggedIn && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                >
+                  Sign Out
+                </button>
+              )}
             </div>
           </div>
         </div>
