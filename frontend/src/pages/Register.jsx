@@ -1,8 +1,9 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import Title from '../components/Title'
 import { AuthContext } from '../context/AuthContext'
+import AuthLayout from '../components/AuthLayout'
+import FormField, { fieldClass } from '../components/FormField'
 
 // Rough strength read purely so the meter has something to show. It is a
 // hint for the person choosing a password, not a security control.
@@ -79,136 +80,134 @@ const Register = () => {
   }
 
   const strength = STRENGTH[scorePassword(form.password)]
-  const inputClass =
-    'w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition-colors focus:border-gray-900'
+  // Only complain about a mismatch once there is something to compare.
+  const mismatch = form.confirm.length > 0 && form.password !== form.confirm
 
   return (
-    <div className="pt-10 pb-16">
-      <div className="mb-8">
-        <Title text1={'CREATE'} text2={'ACCOUNT'} />
-      </div>
+    <AuthLayout
+      eyebrow="Create your account"
+      heading="A faster way to shop, from the second visit on."
+      points={[
+        'Save your details for one-tap checkout',
+        'Follow every order from placed to delivered',
+        'Early access to sales and new arrivals'
+      ]}
+    >
+      <div className="mx-auto w-full max-w-sm">
+        <h1 className="prata-regular text-2xl text-gray-900">Create account</h1>
+        <p className="mt-2 text-sm text-gray-500">
+          Already registered?{' '}
+          <Link
+            to="/login"
+            state={{ from: redirectTo }}
+            className="font-medium text-gray-900 underline underline-offset-4 hover:text-gray-600"
+          >
+            Sign in
+          </Link>
+        </p>
 
-      <div className="mx-auto w-full max-w-md">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-          <h2 className="text-xl font-medium text-gray-900">Join ShopNGo</h2>
-          <p className="mt-1 mb-6 text-sm text-gray-500">
-            Faster checkout, order tracking and early access to sales.
-          </p>
+        <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
+          <FormField id="name" label="Full name">
+            <input
+              id="name"
+              name="name"
+              autoComplete="name"
+              value={form.name}
+              onChange={onChange}
+              className={fieldClass}
+              placeholder="Faizan Patel"
+            />
+          </FormField>
 
-          <form className="space-y-4" onSubmit={onSubmit} noValidate>
-            <div>
-              <label htmlFor="name" className="mb-1.5 block text-sm text-gray-700">
-                Full name
-              </label>
-              <input
-                id="name"
-                name="name"
-                autoComplete="name"
-                value={form.name}
-                onChange={onChange}
-                className={inputClass}
-                placeholder="Faizan Patel"
-              />
-            </div>
+          <FormField id="email" label="Email">
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onChange={onChange}
+              className={fieldClass}
+              placeholder="you@example.com"
+            />
+          </FormField>
 
-            <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm text-gray-700">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                value={form.email}
-                onChange={onChange}
-                className={inputClass}
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm text-gray-700">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  value={form.password}
-                  onChange={onChange}
-                  className={`${inputClass} pr-16`}
-                  placeholder="At least 8 characters"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-xs font-medium text-gray-500 hover:text-gray-900"
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-
-              {form.password && (
-                <div className="mt-2 flex items-center gap-3">
-                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-200">
-                    <div className={`h-full ${strength.bar} ${strength.width} transition-all`} />
-                  </div>
-                  <span className="text-xs text-gray-500">{strength.label}</span>
+          <FormField
+            id="password"
+            label="Password"
+            hint={
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="rounded text-xs font-medium text-gray-500 hover:text-gray-900"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            }
+          >
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={form.password}
+              onChange={onChange}
+              className={fieldClass}
+              placeholder="At least 8 characters"
+            />
+            {form.password && (
+              <div className="mt-2 flex items-center gap-3">
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-200">
+                  <div className={`h-full ${strength.bar} ${strength.width} transition-all duration-300`} />
                 </div>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="confirm" className="mb-1.5 block text-sm text-gray-700">
-                Confirm password
-              </label>
-              <input
-                id="confirm"
-                name="confirm"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                value={form.confirm}
-                onChange={onChange}
-                className={inputClass}
-                placeholder="Type it again"
-              />
-            </div>
-
-            {error && (
-              <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                {error}
-              </p>
+                <span className="w-16 text-right text-xs text-gray-500">{strength.label}</span>
+              </div>
             )}
+          </FormField>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-brand py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+          <FormField
+            id="confirm"
+            label="Confirm password"
+            error={mismatch ? 'Passwords do not match' : undefined}
+          >
+            <input
+              id="confirm"
+              name="confirm"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={form.confirm}
+              onChange={onChange}
+              className={`${fieldClass} ${mismatch ? 'border-red-400' : ''}`}
+              placeholder="Type it again"
+            />
+          </FormField>
+
+          {error && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600"
             >
-              {loading ? 'Creating account…' : 'Create Account'}
-            </button>
-          </form>
+              <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {error}
+            </p>
+          )}
 
-          <p className="mt-6 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link
-              to="/login"
-              state={{ from: redirectTo }}
-              className="font-medium text-gray-900 underline underline-offset-4 hover:text-gray-600"
-            >
-              Sign in
-            </Link>
-          </p>
-        </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-brand py-3 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? 'Creating account…' : 'Create Account'}
+          </button>
+        </form>
 
-        <p className="mt-4 text-center text-xs text-gray-400">
+        <p className="mt-8 text-center text-xs text-gray-400 lg:hidden">
           Accounts are stored in this browser only, for the demo.
         </p>
       </div>
-    </div>
+    </AuthLayout>
   )
 }
 
