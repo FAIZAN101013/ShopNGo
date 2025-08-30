@@ -1,8 +1,8 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import Title from '../components/Title'
 import { AuthContext } from '../context/AuthContext'
+import FormField, { fieldClass } from '../components/FormField'
 
 const initialsOf = (name = '') =>
   name
@@ -12,28 +12,47 @@ const initialsOf = (name = '') =>
     .map((part) => part[0].toUpperCase())
     .join('') || '?'
 
+const readOrders = () => {
+  try {
+    const orders = JSON.parse(localStorage.getItem('orders') || '[]')
+    return Array.isArray(orders) ? orders : []
+  } catch {
+    return []
+  }
+}
+
 const Profile = () => {
   const navigate = useNavigate()
   const { user, isLoggedIn, logout, updateProfile, loading } = useContext(AuthContext)
+
   const [name, setName] = useState('')
-  const [orderCount, setOrderCount] = useState(0)
+  const [orders, setOrders] = useState([])
 
   useEffect(() => {
     document.title = 'My Profile | ShopNGo'
   }, [])
 
-  // Keep the field in step with the signed-in user, including after a save
-  // or a switch of account.
+  // Keep the field in step with the signed-in user, including after a save.
   useEffect(() => {
     setName(user?.name || '')
   }, [user])
 
   useEffect(() => {
-    try {
-      const orders = JSON.parse(localStorage.getItem('orders') || '[]')
-      setOrderCount(Array.isArray(orders) ? orders.length : 0)
-    } catch { /* unreadable history just shows zero */ }
+    setOrders(readOrders())
   }, [])
+
+  const stats = useMemo(() => {
+    const spent = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+    const items = orders.reduce((sum, o) => sum + (o.items?.length || 0), 0)
+    return { count: orders.length, spent, items }
+  }, [orders])
+
+  const memberSince = useMemo(() => {
+    if (orders.length === 0) return null
+    const oldest = orders[orders.length - 1]?.createdAt
+    if (!oldest) return null
+    return new Date(oldest).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  }, [orders])
 
   const onSave = async (e) => {
     e.preventDefault()
@@ -53,24 +72,29 @@ const Profile = () => {
 
   if (!isLoggedIn) {
     return (
-      <div className="pt-10 pb-16">
-        <div className="mb-8">
-          <Title text1={'MY'} text2={'PROFILE'} />
-        </div>
-        <div className="mx-auto max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-gray-600">You need to sign in to view your profile.</p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
+      <div className="py-16">
+        <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
+            <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h1 className="prata-regular mt-5 text-2xl text-gray-900">Your account</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Sign in to manage your details and follow your orders.
+          </p>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
               to="/login"
               state={{ from: '/profile' }}
-              className="rounded-lg bg-brand px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
+              className="rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
             >
               Sign in
             </Link>
             <Link
               to="/register"
               state={{ from: '/profile' }}
-              className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
+              className="rounded-lg border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
             >
               Create account
             </Link>
@@ -80,104 +104,154 @@ const Profile = () => {
     )
   }
 
-  const inputClass =
-    'w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition-colors focus:border-gray-900'
-
   return (
-    <div className="pt-10 pb-16">
-      <div className="mb-8">
-        <Title text1={'MY'} text2={'PROFILE'} />
+    <div className="py-10 sm:py-14">
+      {/* Identity banner. The page opens by telling you who you are signed in
+          as, rather than starting cold at a form field. */}
+      <div className="relative overflow-hidden rounded-2xl bg-brand p-8 text-white sm:p-10">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/5 blur-2xl"
+        />
+        <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-white text-xl font-medium text-gray-900">
+            {initialsOf(user.name)}
+          </div>
+          <div className="min-w-0">
+            <h1 className="prata-regular truncate text-2xl sm:text-3xl">{user.name}</h1>
+            <p className="mt-1 truncate text-sm text-white/60">{user.email}</p>
+            {memberSince && (
+              <p className="mt-1 text-xs text-white/40">Shopping with us since {memberSince}</p>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Identity header, so the page opens by telling you who you are
-          signed in as rather than starting with a form field. */}
-      <div className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand text-lg font-medium text-white">
-          {initialsOf(user.name)}
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-lg font-medium text-gray-900">{user.name}</p>
-          <p className="truncate text-sm text-gray-500">{user.email}</p>
-        </div>
-        <div className="ml-auto text-right">
-          <p className="text-2xl font-medium text-gray-900">{orderCount}</p>
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            {orderCount === 1 ? 'Order' : 'Orders'}
+      {/* Stats */}
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {[
+          { label: stats.count === 1 ? 'Order placed' : 'Orders placed', value: stats.count },
+          { label: 'Items bought', value: stats.items },
+          { label: 'Total spent', value: `$${stats.spent.toFixed(2)}` }
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="rounded-xl border border-gray-200 bg-white p-5 text-center shadow-sm last:col-span-2 sm:last:col-span-1"
+          >
+            <p className="text-2xl font-medium text-gray-900">{stat.value}</p>
+            <p className="mt-1 text-xs uppercase tracking-wide text-gray-500">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* Account details */}
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8 lg:col-span-3">
+          <h2 className="text-lg font-medium text-gray-900">Account details</h2>
+          <p className="mt-1 mb-6 text-sm text-gray-500">
+            This is the name we use on your orders.
           </p>
-        </div>
-      </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">Account details</h2>
-          <form className="space-y-4" onSubmit={onSave}>
-            <div>
-              <label htmlFor="displayName" className="mb-1.5 block text-sm text-gray-700">
-                Display name
-              </label>
+          <form className="space-y-5" onSubmit={onSave}>
+            <FormField id="displayName" label="Display name">
               <input
                 id="displayName"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className={inputClass}
+                className={fieldClass}
                 placeholder="Your name"
               />
-            </div>
-            <div>
-              <label htmlFor="profileEmail" className="mb-1.5 block text-sm text-gray-700">
-                Email
-              </label>
+            </FormField>
+
+            <FormField id="profileEmail" label="Email">
               <input
                 id="profileEmail"
                 value={user.email}
                 disabled
-                className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500"
+                className={`${fieldClass} cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-200`}
               />
               <p className="mt-1.5 text-xs text-gray-400">
                 Your email identifies the account and cannot be changed.
               </p>
-            </div>
+            </FormField>
+
+            {/* Disabled until something actually changed, so the button is
+                never offering to save nothing. */}
             <button
               type="submit"
-              disabled={loading || name.trim() === user.name}
-              className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={loading || name.trim() === user.name || !name.trim()}
+              className="rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-40"
             >
               {loading ? 'Saving…' : 'Save changes'}
             </button>
           </form>
-        </div>
+        </section>
 
-        <div className="flex flex-col gap-6">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-medium text-gray-900">Your orders</h2>
-            <p className="text-sm text-gray-600">
-              {orderCount === 0
-                ? 'You have not placed any orders yet.'
-                : `You have placed ${orderCount} ${orderCount === 1 ? 'order' : 'orders'}.`}
-            </p>
-            <Link
-              to={orderCount === 0 ? '/collection' : '/orders'}
-              className="mt-4 inline-block rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
-            >
-              {orderCount === 0 ? 'Start shopping' : 'View my orders'}
-            </Link>
-          </div>
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          {/* Recent orders */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-lg font-medium text-gray-900">Recent orders</h2>
+              {orders.length > 0 && (
+                <Link
+                  to="/orders"
+                  className="rounded text-xs font-medium text-gray-500 underline underline-offset-4 hover:text-gray-900"
+                >
+                  View all
+                </Link>
+              )}
+            </div>
 
-          {/* Signing out belonged on the profile page all along; it was only
-              reachable from the header dropdown. */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-2 text-lg font-medium text-gray-900">Session</h2>
-            <p className="text-sm text-gray-600">
-              Signed in as {user.email} on this browser.
+            {orders.length === 0 ? (
+              <>
+                <p className="mt-4 text-sm text-gray-500">
+                  You have not placed any orders yet.
+                </p>
+                <Link
+                  to="/collection"
+                  className="mt-5 inline-block rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
+                >
+                  Start shopping
+                </Link>
+              </>
+            ) : (
+              <ul className="mt-4 divide-y divide-gray-100">
+                {orders.slice(0, 3).map((order) => (
+                  <li key={order.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-900">{order.id}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(order.createdAt).toLocaleDateString(undefined, {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-medium text-gray-900">
+                      ${Number(order.total).toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Session. Signing out belonged here all along; it was only
+              reachable from a dropdown that opens on hover. */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-lg font-medium text-gray-900">Session</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Signed in on this browser.
             </p>
             <button
               type="button"
               onClick={onLogout}
-              className="mt-4 rounded-lg border border-red-200 px-5 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+              className="mt-5 w-full rounded-lg border border-red-200 px-5 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
             >
               Sign out
             </button>
-          </div>
+          </section>
         </div>
       </div>
     </div>
