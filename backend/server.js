@@ -15,6 +15,10 @@ const app = express(); // this the main this what creates and starts the app
 app.use(express.json()); // this line basice sends the data to the backend
 app.use(cors());// this line allows the frontend to access the backend
 
+// Serve the product photos. The database stores paths like
+// "/images/p_img1.webp", so this is what turns those into real files.
+app.use("/images", express.static("public/images"));
+
 app.use("/api/products", productRouter); // this line is the main route for the products
 
 // this is the main route for the backend
