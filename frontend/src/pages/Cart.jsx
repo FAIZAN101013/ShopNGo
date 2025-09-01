@@ -1,12 +1,13 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
-import { products } from '../assets/assets';
+
 import { assets } from '../assets/assets';
 import Title from '../components/Title';
+import { imageUrl } from '../services/api';
 
 const Cart = () => {
-  const { cartItems, updateQuantity, currency, getCartAmount } = useContext(ShopContext);
+  const { products, cartItems, updateQuantity, currency, getCartAmount } = useContext(ShopContext);
   const navigate = useNavigate();
 
   // Helper function to get cart items with full product details
@@ -67,7 +68,7 @@ const Cart = () => {
                   {/* Product Image */}
                   <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0">
                     <img
-                      src={item.image[0]}
+                      src={imageUrl(item.image[0])}
                       alt={item.name}
                       className="w-full h-full object-cover rounded-lg"
                     />

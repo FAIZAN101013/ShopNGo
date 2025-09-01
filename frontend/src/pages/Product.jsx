@@ -2,11 +2,12 @@ import React, { useContext, useLayoutEffect, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { assets } from '../assets/assets';
+import { imageUrl } from '../services/api';
 import RelatedProducts from '../components/RelatedProducts';
 
 const Product = () => {
   const { productId } = useParams();
-  const { products, currency, addToCart } = useContext(ShopContext);
+  const { products, productsError, currency, addToCart } = useContext(ShopContext);
   const navigate = useNavigate();
 
   const [productData, setProductData] = useState(null);
@@ -103,7 +104,7 @@ const Product = () => {
               {productData.image.map((item, index) => (
                 <img
                   key={index}
-                  src={item}
+                  src={imageUrl(item)}
                   onClick={() => setImage(item)}
                   className={`w-[22%] sm:w-full h-auto cursor-pointer rounded-lg border-2 
                     ${image === item ? 'border-black' : 'border-gray-200'} 
@@ -115,7 +116,7 @@ const Product = () => {
             <div className="w-full sm:w-[80%] p-4">
               <img
                 className="w-full h-auto object-contain rounded-lg"
-                src={image}
+                src={imageUrl(image)}
                 alt={productData.name}
               />
             </div>
@@ -315,7 +316,25 @@ const Product = () => {
       {/* Related Products */}
       <RelatedProducts category={productData.category} subCategory={productData.subCategory} />
     </div>
-  ) : <div className="opacity-0"></div>;
+  ) : productsError ? (
+    <div className="py-24 text-center">
+      <p className="text-sm text-red-600">{productsError}</p>
+      <p className="mt-2 text-xs text-gray-400">Start the API with <code>npm run server</code> in the backend folder.</p>
+    </div>
+  ) : (
+    // Mirrors the loaded layout so the page does not jump when it arrives.
+    <div className="border-t-2 border-gray-300 pt-10">
+      <div className="flex flex-col gap-12 sm:flex-row">
+        <div className="aspect-[3/4] w-full animate-pulse rounded-lg bg-gray-100 sm:w-1/2" />
+        <div className="flex-1 space-y-4 py-4">
+          <div className="h-7 w-3/4 animate-pulse rounded bg-gray-100" />
+          <div className="h-6 w-24 animate-pulse rounded bg-gray-100" />
+          <div className="h-20 w-full animate-pulse rounded bg-gray-100" />
+          <div className="h-11 w-40 animate-pulse rounded bg-gray-100" />
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Product;

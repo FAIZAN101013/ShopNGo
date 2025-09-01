@@ -4,6 +4,7 @@ import Title from '../components/Title';
 import ProductItem from '../components/ProductItem';
 import Pagination from '../components/Pagination';
 import FilterGroup from '../components/FilterGroup';
+import ProductGridSkeleton from '../components/ProductGridSkeleton';
 
 const PRODUCTS_PER_PAGE = 12;
 
@@ -42,7 +43,7 @@ const PRICE_RANGES = [
 const labelFor = (list, value) => list.find((i) => i.value === value)?.label || value;
 
 const Collection = () => {
-  const { products, search, showSearch } = useContext(ShopContext);
+  const { products, productsLoading, productsError, search, showSearch } = useContext(ShopContext);
 
   const [showFilter, setShowFilter] = useState(false);
   const [category, setCategory] = useState([]);
@@ -285,6 +286,14 @@ const Collection = () => {
             </p>
           )}
 
+          {productsLoading ? (
+            <ProductGridSkeleton count={12} />
+          ) : productsError ? (
+            <div className="rounded-xl border border-red-100 bg-red-50 p-8 text-center">
+              <p className="text-sm text-red-600">{productsError}</p>
+              <p className="mt-2 text-xs text-red-400">Start the API with <code>npm run server</code> in the backend folder.</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
             {visibleProducts.length > 0 ? (
               visibleProducts.map((item) => (
@@ -311,6 +320,7 @@ const Collection = () => {
               </div>
             )}
           </div>
+          )}
 
           <Pagination
             currentPage={safePage}

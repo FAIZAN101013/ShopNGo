@@ -4,7 +4,7 @@ import Title from './Title';
 import ProductItem from './ProductItem';
 
 const BestSeller = () => {
-    const { products } = useContext(ShopContext);
+    const { products, productsLoading } = useContext(ShopContext);
 
     const bestSeller = useMemo(
         () => products.filter((item) => item.bestseller).slice(0, 5),
@@ -13,7 +13,7 @@ const BestSeller = () => {
 
     // Nothing to show and nothing to wait for - the section would otherwise
     // sit there claiming to be loading forever.
-    if (bestSeller.length === 0) return null;
+    if (productsLoading || bestSeller.length === 0) return null;
 
     return (
         <section className="my-20">

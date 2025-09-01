@@ -1,6 +1,7 @@
 import React, { useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
+import { imageUrl } from '../services/api'
 
 const ProductItem = ({ id, image, name, price }) => {
     const { currency } = useContext(ShopContext)
@@ -19,7 +20,7 @@ const ProductItem = ({ id, image, name, price }) => {
             <div className='aspect-[3/4] overflow-hidden rounded-lg bg-gray-50'>
                 <img
                     className='h-full w-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-105'
-                    src={image[0]}
+                    src={imageUrl(image[0])}
                     alt={name}
                     loading='lazy'
                     decoding='async'

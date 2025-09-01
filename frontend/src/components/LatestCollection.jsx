@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import Title from './Title';
 import ProductItem from './ProductItem';
+import ProductGridSkeleton from './ProductGridSkeleton';
 
 function LatestCollection() {
-    const { products } = useContext(ShopContext);
+    const { products, productsLoading } = useContext(ShopContext);
 
     // Derived from products rather than copied into state by an effect: the
     // old version rendered an empty grid on the first paint, then filled it.
@@ -22,6 +23,9 @@ function LatestCollection() {
             </div>
 
             {/* Product Grid */}
+            {productsLoading ? (
+                <ProductGridSkeleton count={10} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6" />
+            ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                 {latestProduct.map((item) => (
                     <ProductItem
@@ -33,6 +37,7 @@ function LatestCollection() {
                     />
                 ))}
             </div>
+            )}
 
             <div className="flex justify-center mt-10">
                 <Link

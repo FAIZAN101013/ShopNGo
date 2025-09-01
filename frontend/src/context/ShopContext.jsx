@@ -2,7 +2,7 @@ import { createContext } from "react";
 import React from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { products } from "../assets/assets";
+import { fetchProducts } from "../services/api";
 import { useState, useEffect } from "react";
 
 export const ShopContext = createContext();
@@ -24,6 +24,35 @@ const ShopContextProvider = (props) => {
         }
     });
     const [cartItemsCount, setCartItemsCount] = useState(0);
+
+    // The catalogue is fetched once when the app mounts. Everything that
+    // needs products reads them from here, so there is one request rather
+    // than one per page.
+    const [products, setProducts] = useState([]);
+    const [productsLoading, setProductsLoading] = useState(true);
+    const [productsError, setProductsError] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const load = async () => {
+            try {
+                const list = await fetchProducts();
+                if (!cancelled) setProducts(list);
+            } catch (error) {
+                // Surfaced in the UI rather than only logged, so a stopped
+                // backend reads as an explainable error and not an empty shop.
+                if (!cancelled) setProductsError(error.message);
+            } finally {
+                if (!cancelled) setProductsLoading(false);
+            }
+        };
+
+        load();
+        // A component can unmount before the request finishes; without this
+        // React warns about setting state on something that is gone.
+        return () => { cancelled = true; };
+    }, []);
 
     // Helper function to calculate total items in cart
     const calculateCartCount = (cartData) => {
@@ -126,6 +155,8 @@ const ShopContextProvider = (props) => {
 
     const value = {
         products,
+        productsLoading,
+        productsError,
         currency,
         delivery_fee,
         search,

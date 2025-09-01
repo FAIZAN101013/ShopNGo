@@ -1,12 +1,13 @@
 import React, { useContext, useMemo, useState } from 'react'
 import Title from '../components/Title'
 import { ShopContext } from '../context/ShopContext'
-import { products, assets } from '../assets/assets'
+import { assets } from '../assets/assets'
+import { imageUrl } from '../services/api'
 import { toast } from 'react-toastify'
 import { Link, useNavigate } from 'react-router-dom'
 
 const PlaceOrder = () => {
-  const { cartItems, currency, delivery_fee, clearCart } = useContext(ShopContext)
+  const { products, cartItems, currency, delivery_fee, clearCart } = useContext(ShopContext)
   const navigate = useNavigate()
 
   const cartItemsWithDetails = useMemo(() => {
@@ -171,7 +172,7 @@ const PlaceOrder = () => {
                 cartItemsWithDetails.map((item) => (
                   <div key={`${item._id}-${item.size}`} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <img src={item.image[0]} alt={item.name} className="w-12 h-12 rounded object-cover" />
+                      <img src={imageUrl(item.image[0])} alt={item.name} className="w-12 h-12 rounded object-cover" />
                       <div>
                         <p className="text-sm text-gray-800">{item.name}</p>
                         <p className="text-xs text-gray-500">Size: {item.size} • Qty: {item.quantity}</p>

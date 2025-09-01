@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local config. .env.example is committed as the template.
+.env
+.env.local

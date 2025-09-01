@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Title from '../components/Title'
+import { imageUrl } from '../services/api'
 
 const readOrders = () => {
   try {
@@ -36,7 +37,7 @@ const OrderItems = ({ items }) => (
     {items.map((item) => (
       <div key={`${item._id}-${item.size}`} className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <img src={item.image[0]} alt={item.name} className="w-12 h-12 rounded object-cover shrink-0" />
+          <img src={imageUrl(item.image[0])} alt={item.name} className="w-12 h-12 rounded object-cover shrink-0" />
           <div className="min-w-0">
             <p className="text-sm text-gray-800 truncate">{item.name}</p>
             <p className="text-xs text-gray-500">Size: {item.size} &bull; Qty: {item.quantity}</p>
