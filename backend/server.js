@@ -10,6 +10,7 @@ import connectDB from "./config/db.js";
 import { verifyMailer } from "./config/mailer.js";
 import productRouter from "./routes/productRoute.js";
 import userRouter from "./routes/userRoute.js";
+import orderRouter from "./routes/orderRoute.js";
 
 connectDB(); // connect to MongoDB
 verifyMailer(); // check the SMTP login now, not at the first signup
@@ -25,6 +26,7 @@ app.use("/images", express.static("public/images"));
 
 app.use("/api/products", productRouter); // this line is the main route for the products
 app.use("/api/user", userRouter); // accounts: register, verify, login, password reset
+app.use("/api/orders", orderRouter); // placing and reading your own orders
 
 // this is the main route for the backend
 app.get("/", (req, res) => {
