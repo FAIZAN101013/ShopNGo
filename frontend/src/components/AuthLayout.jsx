@@ -56,7 +56,7 @@ const AuthLayout = ({ eyebrow, heading, points, children }) => {
           </div>
 
           <p className="relative z-10 text-xs text-white/40">
-            Accounts are stored in this browser only, for the demo.
+            Passwords are hashed with bcrypt and never stored readable.
           </p>
         </aside>
 

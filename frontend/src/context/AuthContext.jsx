@@ -1,168 +1,185 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 
+import {
+  registerAccount,
+  verifyEmailCode,
+  resendCode as resendCodeRequest,
+  loginAccount,
+  requestPasswordReset,
+  submitPasswordReset,
+  fetchProfile,
+  saveProfile,
+  getToken,
+  setToken,
+  clearToken
+} from '../services/api'
+
 export const AuthContext = createContext()
 
-const USERS_KEY = 'shopngo_users'
-const SESSION_KEY = 'user'
-const LEGACY_KEY = 'registered_user'
-
 /*
-  Passwords are hashed before they are stored so they are not sitting in
-  localStorage in plain text.
+  Accounts used to live in localStorage: the list of users, the password
+  hashes, all of it sitting in a place the person using the browser can open
+  and edit. It was a placeholder and it is gone.
 
-  This is NOT real security: SHA-256 is fast and unsalted, so it does not
-  resist an attacker with the stored data, and anything held in the browser
-  is readable by the user anyway. It is a placeholder until the Express API
-  handles auth properly with bcrypt and a JWT. The point is that the client
-  should never hold a readable password even in a demo.
+  Now the server owns accounts. bcrypt hashes the password, an emailed code
+  proves the address is real, and the browser holds exactly one thing - a
+  signed token that says which account this is.
+
+  The method names and their behaviour (async, throwing an Error with a
+  readable message) are unchanged, which is why the pages calling them barely
+  had to move.
 */
-const hashPassword = async (password) => {
-  const salted = `shopngo:${password}`
+// What the browser-only version left behind. Anyone who used the site
+// before this change still has their old account list and order history
+// sitting in storage, where it is now both useless and slightly alarming.
+const RETIRED_KEYS = ['shopngo_users', 'registered_user', 'user', 'orders', 'last_order']
 
-  // crypto.subtle only exists in a secure context, so it is missing when the
-  // dev server is opened over a plain-HTTP LAN address from a phone. Fall
-  // back rather than throwing, since neither path is real security anyway.
-  if (!globalThis.crypto?.subtle) {
-    let hash = 0
-    for (let i = 0; i < salted.length; i++) {
-      hash = (hash << 5) - hash + salted.charCodeAt(i)
-      hash |= 0
-    }
-    return `insecure-${hash.toString(16)}`
-  }
-
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salted))
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-const readJSON = (key, fallback) => {
+const forgetOldStorage = () => {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || 'null')
-    return value ?? fallback
-  } catch {
-    return fallback
-  }
-}
-
-const writeJSON = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch { /* storage blocked - state still works for this session */ }
+    RETIRED_KEYS.forEach((key) => localStorage.removeItem(key))
+  } catch { /* storage blocked - nothing to clean up anyway */ }
 }
 
 const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => readJSON(SESSION_KEY, null))
+  const [user, setUser] = useState(null)
+
+  // Two different waits. `booting` is "we are checking the stored token" and
+  // happens once; `loading` is "a button was pressed". Sharing one flag made
+  // every form look busy on first paint.
+  const [booting, setBooting] = useState(Boolean(getToken()))
   const [loading, setLoading] = useState(false)
 
-  // The old build stored a single `registered_user`, so only one account
-  // could ever exist - registering again overwrote it. Carry any existing
-  // account into the accounts list so nobody loses their login.
+  // A stored token is a claim, not proof - it may have expired or the
+  // account may be gone. Ask the server who it belongs to before trusting it.
   useEffect(() => {
-    const legacy = readJSON(LEGACY_KEY, null)
-    if (!legacy?.email) return
+    forgetOldStorage()
 
-    const users = readJSON(USERS_KEY, [])
-    if (!users.some((u) => u.email === legacy.email)) {
-      hashPassword(legacy.password || '').then((passwordHash) => {
-        writeJSON(USERS_KEY, [
-          ...users,
-          { name: legacy.name || 'User', email: legacy.email, passwordHash }
-        ])
-        localStorage.removeItem(LEGACY_KEY)
+    if (!getToken()) return
+
+    let cancelled = false
+
+    fetchProfile()
+      .then(({ user: profile }) => {
+        if (!cancelled) setUser(profile)
       })
-    } else {
-      localStorage.removeItem(LEGACY_KEY)
-    }
+      .catch(() => {
+        // Expired or invalid: drop it rather than leaving a dead token
+        // around to fail every later request.
+        clearToken()
+      })
+      .finally(() => {
+        if (!cancelled) setBooting(false)
+      })
+
+    return () => { cancelled = true }
+  }, [])
+
+  // Signing in and verifying both end the same way, so they share this.
+  const startSession = useCallback((token, profile) => {
+    setToken(token)
+    setUser(profile)
+    return profile
   }, [])
 
   /*
-    Every method below is async and throws an Error with a readable message
-    on failure. That is deliberate: when these move to the API the bodies
-    become a fetch call and nothing that calls them has to change.
+    Registering no longer signs you in. It creates the account and sends a
+    code, and the page moves on to the screen that asks for it.
   */
-
   const register = useCallback(async ({ name, email, password }) => {
     setLoading(true)
     try {
-      const normalisedEmail = email.trim().toLowerCase()
-      const users = readJSON(USERS_KEY, [])
-
-      if (users.some((u) => u.email === normalisedEmail)) {
-        throw new Error('An account with that email already exists')
-      }
-
-      const passwordHash = await hashPassword(password)
-      const account = { name: name.trim(), email: normalisedEmail, passwordHash }
-      writeJSON(USERS_KEY, [...users, account])
-
-      // Registering signs you in. Sending someone to a login form to retype
-      // the details they just entered is a pointless extra step.
-      const session = { name: account.name, email: account.email }
-      writeJSON(SESSION_KEY, session)
-      setUser(session)
-      return session
+      const data = await registerAccount({ name: name.trim(), email: email.trim(), password })
+      return { requiresVerification: true, email: data.email, message: data.message }
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  const verifyEmail = useCallback(async ({ email, code }) => {
+    setLoading(true)
+    try {
+      const data = await verifyEmailCode({ email: email.trim(), code: String(code).trim() })
+      return startSession(data.token, data.user)
+    } finally {
+      setLoading(false)
+    }
+  }, [startSession])
+
+  const resendCode = useCallback(async ({ email, purpose = 'verify' }) => {
+    const data = await resendCodeRequest({ email: email.trim(), purpose })
+    return data.message
   }, [])
 
   const login = useCallback(async ({ email, password }) => {
     setLoading(true)
     try {
-      const normalisedEmail = email.trim().toLowerCase()
-      const users = readJSON(USERS_KEY, [])
-      const account = users.find((u) => u.email === normalisedEmail)
-      const passwordHash = await hashPassword(password)
+      const data = await loginAccount({ email: email.trim(), password })
+      return startSession(data.token, data.user)
+    } finally {
+      setLoading(false)
+    }
+  }, [startSession])
 
-      // One message for both cases, so this cannot be used to discover
-      // which email addresses have accounts.
-      if (!account || account.passwordHash !== passwordHash) {
-        throw new Error('Email or password is incorrect')
-      }
-
-      const session = { name: account.name, email: account.email }
-      writeJSON(SESSION_KEY, session)
-      setUser(session)
-      return session
+  const forgotPassword = useCallback(async ({ email }) => {
+    setLoading(true)
+    try {
+      const data = await requestPasswordReset({ email: email.trim() })
+      return data.message
     } finally {
       setLoading(false)
     }
   }, [])
 
-  const logout = useCallback(() => {
+  const resetPassword = useCallback(async ({ email, code, password }) => {
+    setLoading(true)
     try {
-      localStorage.removeItem(SESSION_KEY)
-    } catch { /* storage blocked - clearing state below is what matters */ }
+      const data = await submitPasswordReset({ email: email.trim(), code: String(code).trim(), password })
+      return data.message
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  /*
+    Signing out is a local act: throw the token away. There is no request to
+    make, because the server does not keep a list of who is signed in - that
+    is the trade a JWT makes.
+  */
+  const logout = useCallback(() => {
+    clearToken()
     setUser(null)
   }, [])
 
   const updateProfile = useCallback(async ({ name }) => {
     setLoading(true)
     try {
-      if (!user) throw new Error('You are not signed in')
-
       const trimmed = name.trim()
       if (!trimmed) throw new Error('Name cannot be empty')
 
-      const users = readJSON(USERS_KEY, []).map((u) =>
-        u.email === user.email ? { ...u, name: trimmed } : u
-      )
-      writeJSON(USERS_KEY, users)
-
-      const session = { ...user, name: trimmed }
-      writeJSON(SESSION_KEY, session)
-      setUser(session)
-      return session
+      const data = await saveProfile({ name: trimmed })
+      setUser(data.user)
+      return data.user
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [])
 
   const value = useMemo(
-    () => ({ user, isLoggedIn: Boolean(user), loading, register, login, logout, updateProfile }),
-    [user, loading, register, login, logout, updateProfile]
+    () => ({
+      user,
+      isLoggedIn: Boolean(user),
+      booting,
+      loading,
+      register,
+      verifyEmail,
+      resendCode,
+      login,
+      forgotPassword,
+      resetPassword,
+      logout,
+      updateProfile
+    }),
+    [user, booting, loading, register, verifyEmail, resendCode, login, forgotPassword, resetPassword, logout, updateProfile]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import { AuthContext } from '../context/AuthContext'
 import AuthLayout from '../components/AuthLayout'
 import FormField, { fieldClass } from '../components/FormField'
+import Alert from '../components/Alert'
 
 // Rough strength read purely so the meter has something to show. It is a
 // hint for the person choosing a password, not a security control.
@@ -70,10 +71,12 @@ const Register = () => {
     }
 
     try {
-      const session = await register(form)
-      // Registering signs you in, so there is no second form to fill in.
-      toast.success(`Welcome to ShopNGo, ${session.name}`)
-      navigate(redirectTo, { replace: true })
+      const { email, message } = await register(form)
+      // Registering no longer signs you in. The account is not usable until
+      // the code in the email comes back, so the next screen is the one that
+      // asks for it - and it needs to be told which address to expect.
+      toast.info(message)
+      navigate('/verify-email', { state: { email, from: redirectTo } })
     } catch (err) {
       setError(err.message)
     }
@@ -182,17 +185,7 @@ const Register = () => {
             />
           </FormField>
 
-          {error && (
-            <p
-              role="alert"
-              className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600"
-            >
-              <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {error}
-            </p>
-          )}
+          <Alert>{error}</Alert>
 
           <button
             type="submit"
@@ -204,7 +197,7 @@ const Register = () => {
         </form>
 
         <p className="mt-8 text-center text-xs text-gray-400 lg:hidden">
-          Accounts are stored in this browser only, for the demo.
+          We email a 6 digit code to confirm the address is yours.
         </p>
       </div>
     </AuthLayout>

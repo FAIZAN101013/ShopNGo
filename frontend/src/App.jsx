@@ -11,12 +11,15 @@ import Orders from './pages/Orders'
 import Cart from './pages/Cart'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import VerifyEmail from './pages/VerifyEmail'
+import ForgotPassword from './pages/ForgotPassword'
 import Profile from './pages/Profile'
 import NotFound from './pages/NotFound'
 import NavBar from './components/Navbar'
 import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
 import ScrollToTop from './components/ScrollToTop'
+import RequireAuth from './components/RequireAuth'
 import { ToastContainer } from 'react-toastify';
 
 const App = () => {
@@ -35,9 +38,15 @@ const App = () => {
         <Route path='/cart' element={<Cart />} />
         <Route path='/login' element={<Login />} />
         <Route path='/register' element={<Register />} />
-        <Route path='/placeorder' element={<PlaceOrder />} />
-        <Route path='/orders' element={<Orders />} />
-        <Route path='/profile' element={<Profile />} />
+        <Route path='/verify-email' element={<VerifyEmail />} />
+        <Route path='/forgot-password' element={<ForgotPassword />} />
+
+        {/* Orders belong to an account, so these three need one. Checkout is
+            in here too: an order with nobody to send it to is not an order. */}
+        <Route path='/placeorder' element={<RequireAuth><PlaceOrder /></RequireAuth>} />
+        <Route path='/orders' element={<RequireAuth><Orders /></RequireAuth>} />
+        <Route path='/profile' element={<RequireAuth><Profile /></RequireAuth>} />
+
         <Route path='*' element={<NotFound />} />
       </Routes>
       <Footer />

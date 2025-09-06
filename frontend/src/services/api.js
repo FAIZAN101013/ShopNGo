@@ -2,12 +2,36 @@
   The single place that knows where the API lives and how to talk to it.
 
   Everything goes through here rather than calling fetch from a component, so
-  the base URL, the error handling and the { success, ... } convention are
-  defined once instead of being repeated at every call site.
+  the base URL, the error handling, the login token and the { success, ... }
+  convention are defined once instead of being repeated at every call site.
 */
 
 // Falls back to the local API so the app still runs without a .env file.
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+const TOKEN_KEY = 'shopngo_token'
+
+/*
+  The token is the whole session. It is kept in localStorage so a refresh
+  does not sign you out, and read back through these three functions so
+  nothing else in the app has to know the key or that storage can throw.
+*/
+export const getToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+export const setToken = (token) => {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch { /* private mode - the session just will not survive a refresh */ }
+}
+
+export const clearToken = () => setToken(null)
 
 /*
   Products store an image path like "/images/p_img1.webp", not a full URL, so
@@ -21,12 +45,22 @@ export const imageUrl = (src) => {
   return `${API_URL}${src.startsWith('/') ? '' : '/'}${src}`
 }
 
-const request = async (path, options = {}) => {
+const request = async (path, { auth = false, method = 'GET', body } = {}) => {
+  const headers = { 'Content-Type': 'application/json' }
+
+  // "Bearer <token>" is what the middleware on the server reads. Sent in a
+  // header rather than the URL, because URLs end up in logs and history.
+  if (auth) {
+    const token = getToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+  }
+
   let response
   try {
     response = await fetch(`${API_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body)
     })
   } catch {
     // fetch only rejects when the request never happened at all, which in
@@ -45,13 +79,56 @@ const request = async (path, options = {}) => {
   // all of them. Check the status too, in case something fails before the
   // route is ever reached.
   if (!response.ok || data.success === false) {
-    throw new Error(data.message || `Request failed (${response.status})`)
+    const error = new Error(data.message || `Request failed (${response.status})`)
+    // The body is carried along, not thrown away. Some failures are not
+    // really failures - a login that answers "verify your email first" needs
+    // that flag to know which screen to show next.
+    error.status = response.status
+    error.data = data
+    throw error
   }
 
   return data
 }
 
+/* ---------- catalogue ---------- */
+
 export const fetchProducts = async () => {
   const data = await request('/api/products')
   return data.products || []
+}
+
+/* ---------- accounts ---------- */
+
+export const registerAccount = (payload) =>
+  request('/api/user/register', { method: 'POST', body: payload })
+
+export const verifyEmailCode = (payload) =>
+  request('/api/user/verify', { method: 'POST', body: payload })
+
+export const resendCode = (payload) =>
+  request('/api/user/resend-code', { method: 'POST', body: payload })
+
+export const loginAccount = (payload) =>
+  request('/api/user/login', { method: 'POST', body: payload })
+
+export const requestPasswordReset = (payload) =>
+  request('/api/user/forgot-password', { method: 'POST', body: payload })
+
+export const submitPasswordReset = (payload) =>
+  request('/api/user/reset-password', { method: 'POST', body: payload })
+
+export const fetchProfile = () => request('/api/user/profile', { auth: true })
+
+export const saveProfile = (payload) =>
+  request('/api/user/profile', { method: 'PUT', auth: true, body: payload })
+
+/* ---------- orders ---------- */
+
+export const createOrder = (payload) =>
+  request('/api/orders', { method: 'POST', auth: true, body: payload })
+
+export const fetchOrders = async () => {
+  const data = await request('/api/orders', { auth: true })
+  return data.orders || []
 }

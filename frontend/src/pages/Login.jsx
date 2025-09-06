@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import { AuthContext } from '../context/AuthContext'
 import AuthLayout from '../components/AuthLayout'
 import FormField, { fieldClass } from '../components/FormField'
+import Alert from '../components/Alert'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -42,6 +43,15 @@ const Login = () => {
       toast.success(`Welcome back, ${session.name}`)
       navigate(redirectTo, { replace: true })
     } catch (err) {
+      // The right password on an unverified account is not a failed login,
+      // it is an unfinished signup. The server has already sent a fresh
+      // code, so carry on to the screen that asks for it.
+      if (err.data?.requiresVerification) {
+        toast.info(err.message)
+        navigate('/verify-email', { state: { email: err.data.email, from: redirectTo } })
+        return
+      }
+
       // Shown inline rather than only as a toast: an error about the form
       // belongs on the form, where it stays until it is fixed.
       setError(err.message)
@@ -89,13 +99,24 @@ const Login = () => {
             id="password"
             label="Password"
             hint={
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="rounded text-xs font-medium text-gray-500 hover:text-gray-900"
-              >
-                {showPassword ? 'Hide' : 'Show'}
-              </button>
+              <span className="flex items-baseline gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="rounded text-xs font-medium text-gray-500 hover:text-gray-900"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+                {/* Sits beside the field it is about. Buried at the bottom of
+                    the form it is only ever found by people who already knew
+                    it was there. */}
+                <Link
+                  to="/forgot-password"
+                  className="rounded text-xs font-medium text-gray-500 underline underline-offset-4 hover:text-gray-900"
+                >
+                  Forgot?
+                </Link>
+              </span>
             }
           >
             <input
@@ -110,17 +131,7 @@ const Login = () => {
             />
           </FormField>
 
-          {error && (
-            <p
-              role="alert"
-              className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600"
-            >
-              <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {error}
-            </p>
-          )}
+          <Alert>{error}</Alert>
 
           <button
             type="submit"
@@ -132,7 +143,7 @@ const Login = () => {
         </form>
 
         <p className="mt-8 text-center text-xs text-gray-400 lg:hidden">
-          Accounts are stored in this browser only, for the demo.
+          Your password is hashed on our server. We never see it.
         </p>
       </div>
     </AuthLayout>
