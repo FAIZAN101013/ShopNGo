@@ -1,49 +1,47 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import Title from '../components/Title'
-import { imageUrl } from '../services/api'
 
-const readOrders = () => {
-  try {
-    const all = JSON.parse(localStorage.getItem('orders') || '[]')
-    if (Array.isArray(all) && all.length > 0) return all
-    // Orders placed before the history existed only ever wrote last_order.
-    const last = JSON.parse(localStorage.getItem('last_order') || 'null')
-    return last ? [last] : []
-  } catch {
-    return []
-  }
-}
+import Title from '../components/Title'
+import { fetchOrders, imageUrl } from '../services/api'
+
+/*
+  Orders used to be read out of localStorage, which meant they lived in one
+  browser and belonged to nobody. Now they come from the API, scoped to the
+  signed in account by the token - so they follow you to another device and
+  cannot be edited by whoever is sitting at the keyboard.
+*/
+
+const money = (n) => `$${Number(n || 0).toFixed(2)}`
 
 const OrderSummary = ({ order }) => (
   <div className="border-t border-gray-200 mt-6 pt-4 space-y-2">
     <div className="flex justify-between text-sm">
       <span className="text-gray-600">Subtotal</span>
-      <span className="font-medium">${order.subtotal.toFixed(2)}</span>
+      <span className="font-medium">{money(order.subtotal)}</span>
     </div>
     <div className="flex justify-between text-sm">
       <span className="text-gray-600">Shipping</span>
-      <span className="font-medium">${order.delivery_fee.toFixed(2)}</span>
+      <span className="font-medium">{money(order.deliveryFee)}</span>
     </div>
     <div className="flex justify-between font-medium">
       <span>Total</span>
-      <span>${order.total.toFixed(2)}</span>
+      <span>{money(order.total)}</span>
     </div>
   </div>
 )
 
 const OrderItems = ({ items }) => (
   <div className="mt-6 space-y-3">
-    {items.map((item) => (
-      <div key={`${item._id}-${item.size}`} className="flex items-center justify-between gap-4">
+    {items.map((item, index) => (
+      <div key={`${item.productId}-${item.size}-${index}`} className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <img src={imageUrl(item.image[0])} alt={item.name} className="w-12 h-12 rounded object-cover shrink-0" />
+          <img src={imageUrl(item.image)} alt={item.name} className="w-12 h-12 rounded object-cover shrink-0" />
           <div className="min-w-0">
             <p className="text-sm text-gray-800 truncate">{item.name}</p>
             <p className="text-xs text-gray-500">Size: {item.size} &bull; Qty: {item.quantity}</p>
           </div>
         </div>
-        <div className="text-sm font-medium shrink-0">${(item.price * item.quantity).toFixed(2)}</div>
+        <div className="text-sm font-medium shrink-0">{money(item.price * item.quantity)}</div>
       </div>
     ))}
   </div>
@@ -51,18 +49,62 @@ const OrderItems = ({ items }) => (
 
 const Orders = () => {
   const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [searchParams] = useSearchParams()
-  const orderId = searchParams.get('orderId')
+
+  // Set by checkout, so arriving straight from placing an order opens on
+  // that order rather than on a list you then have to search.
+  const reference = searchParams.get('ref')
 
   useEffect(() => {
     document.title = 'My Orders | ShopNGo'
-    setOrders(readOrders())
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetchOrders()
+      .then((list) => { if (!cancelled) setOrders(list) })
+      .catch((err) => { if (!cancelled) setError(err.message) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+
+    return () => { cancelled = true }
   }, [])
 
   const selected = useMemo(
-    () => (orderId ? orders.find((o) => o.id === orderId) || null : null),
-    [orders, orderId]
+    () => (reference ? orders.find((o) => o.reference === reference) || null : null),
+    [orders, reference]
   )
+
+  if (loading) {
+    return (
+      <div className="pt-10 pb-16">
+        <Title text1={'YOUR'} text2={'ORDERS'} />
+        <div className="mt-8 space-y-6">
+          {[0, 1].map((i) => (
+            <div key={i} className="rounded-xl border border-gray-200 p-6">
+              <div className="h-5 w-40 animate-pulse rounded bg-gray-100" />
+              <div className="mt-3 h-4 w-56 animate-pulse rounded bg-gray-100" />
+              <div className="mt-6 h-12 w-full animate-pulse rounded bg-gray-100" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="pt-10 pb-16">
+        <Title text1={'YOUR'} text2={'ORDERS'} />
+        <p className="mt-4 text-sm text-red-600">{error}</p>
+        <p className="mt-2 text-xs text-gray-400">
+          Start the API with <code>npm run server</code> in the backend folder.
+        </p>
+      </div>
+    )
+  }
 
   if (orders.length === 0) {
     return (
@@ -90,8 +132,8 @@ const Orders = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
             <div>
-              <p className="text-sm text-gray-500">Order ID</p>
-              <p className="font-medium text-gray-900">{selected.id}</p>
+              <p className="text-sm text-gray-500">Order reference</p>
+              <p className="font-medium text-gray-900">{selected.reference}</p>
             </div>
             <span className="self-start bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
               {selected.status}
@@ -99,6 +141,9 @@ const Orders = () => {
           </div>
           <p className="text-sm text-gray-500">
             Placed on {new Date(selected.createdAt).toLocaleString()}
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            A confirmation is on its way to {selected.shipping.email}.
           </p>
 
           <OrderItems items={selected.items} />
@@ -143,8 +188,6 @@ const Orders = () => {
     )
   }
 
-  // Every order ever placed. PlaceOrder has been saving these all along; the
-  // page just never read them and showed only the most recent one.
   return (
     <div className="pt-10 pb-16">
       <Title text1={'YOUR'} text2={'ORDERS'} />
@@ -154,10 +197,10 @@ const Orders = () => {
 
       <div className="space-y-6">
         {orders.map((order) => (
-          <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div key={order.reference} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <p className="font-medium text-gray-900">{order.id}</p>
+                <p className="font-medium text-gray-900">{order.reference}</p>
                 <p className="text-sm text-gray-500">
                   {new Date(order.createdAt).toLocaleDateString(undefined, {
                     day: 'numeric',
@@ -172,7 +215,7 @@ const Orders = () => {
                 <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
                   {order.status}
                 </span>
-                <span className="font-medium text-gray-900">${order.total.toFixed(2)}</span>
+                <span className="font-medium text-gray-900">{money(order.total)}</span>
               </div>
             </div>
 
@@ -180,7 +223,7 @@ const Orders = () => {
 
             <div className="mt-6">
               <Link
-                to={`/orders?orderId=${order.id}`}
+                to={`/orders?ref=${order.reference}`}
                 className="text-sm font-medium text-gray-900 underline underline-offset-4 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 rounded"
               >
                 View details

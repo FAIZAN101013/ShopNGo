@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { AuthContext } from '../context/AuthContext'
 import FormField, { fieldClass } from '../components/FormField'
+import { fetchOrders } from '../services/api'
 
 const initialsOf = (name = '') =>
   name
@@ -12,18 +13,9 @@ const initialsOf = (name = '') =>
     .map((part) => part[0].toUpperCase())
     .join('') || '?'
 
-const readOrders = () => {
-  try {
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]')
-    return Array.isArray(orders) ? orders : []
-  } catch {
-    return []
-  }
-}
-
 const Profile = () => {
   const navigate = useNavigate()
-  const { user, isLoggedIn, logout, updateProfile, loading } = useContext(AuthContext)
+  const { user, logout, updateProfile, loading } = useContext(AuthContext)
 
   const [name, setName] = useState('')
   const [orders, setOrders] = useState([])
@@ -37,8 +29,15 @@ const Profile = () => {
     setName(user?.name || '')
   }, [user])
 
+  // The order history is the account's, not the browser's, so it is asked
+  // for rather than read out of storage. A failure here is quiet: it costs
+  // three numbers on a card, and is not worth blocking the whole page over.
   useEffect(() => {
-    setOrders(readOrders())
+    let cancelled = false
+    fetchOrders()
+      .then((list) => { if (!cancelled) setOrders(list) })
+      .catch(() => { if (!cancelled) setOrders([]) })
+    return () => { cancelled = true }
   }, [])
 
   const stats = useMemo(() => {
@@ -47,12 +46,12 @@ const Profile = () => {
     return { count: orders.length, spent, items }
   }, [orders])
 
+  // The account itself knows when it was created. Guessing from the oldest
+  // order was wrong for anyone who had signed up and not bought anything.
   const memberSince = useMemo(() => {
-    if (orders.length === 0) return null
-    const oldest = orders[orders.length - 1]?.createdAt
-    if (!oldest) return null
-    return new Date(oldest).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-  }, [orders])
+    if (!user?.createdAt) return null
+    return new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  }, [user])
 
   const onSave = async (e) => {
     e.preventDefault()
@@ -68,40 +67,6 @@ const Profile = () => {
     logout()
     toast.success('Signed out')
     navigate('/')
-  }
-
-  if (!isLoggedIn) {
-    return (
-      <div className="py-16">
-        <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-            <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </div>
-          <h1 className="prata-regular mt-5 text-2xl text-gray-900">Your account</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Sign in to manage your details and follow your orders.
-          </p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Link
-              to="/login"
-              state={{ from: '/profile' }}
-              className="rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
-            >
-              Sign in
-            </Link>
-            <Link
-              to="/register"
-              state={{ from: '/profile' }}
-              className="rounded-lg border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
-            >
-              Create account
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -217,9 +182,9 @@ const Profile = () => {
             ) : (
               <ul className="mt-4 divide-y divide-gray-100">
                 {orders.slice(0, 3).map((order) => (
-                  <li key={order.id} className="flex items-center justify-between gap-3 py-3">
+                  <li key={order.reference} className="flex items-center justify-between gap-3 py-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-gray-900">{order.id}</p>
+                      <p className="truncate text-sm font-medium text-gray-900">{order.reference}</p>
                       <p className="text-xs text-gray-500">
                         {new Date(order.createdAt).toLocaleDateString(undefined, {
                           day: 'numeric',
@@ -242,7 +207,8 @@ const Profile = () => {
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="text-lg font-medium text-gray-900">Session</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Signed in on this browser.
+              Signing out forgets the token on this device. Your account and
+              orders stay where they are.
             </p>
             <button
               type="button"

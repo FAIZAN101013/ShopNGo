@@ -1,13 +1,15 @@
-import React, { useContext, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import Title from '../components/Title'
 import { ShopContext } from '../context/ShopContext'
+import { AuthContext } from '../context/AuthContext'
 import { assets } from '../assets/assets'
-import { imageUrl } from '../services/api'
+import { createOrder, imageUrl } from '../services/api'
 import { toast } from 'react-toastify'
 import { Link, useNavigate } from 'react-router-dom'
 
 const PlaceOrder = () => {
   const { products, cartItems, currency, delivery_fee, clearCart } = useContext(ShopContext)
+  const { user } = useContext(AuthContext)
   const navigate = useNavigate()
 
   const cartItemsWithDetails = useMemo(() => {
@@ -23,7 +25,9 @@ const PlaceOrder = () => {
       }
     }
     return items
-  }, [cartItems])
+    // products belongs here. Without it the summary stayed empty when the
+    // catalogue arrived after the cart did, which is the usual order.
+  }, [cartItems, products])
 
   const subtotal = useMemo(() => {
     return cartItemsWithDetails.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -43,6 +47,17 @@ const PlaceOrder = () => {
   })
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // You are signed in to be here, so we already know two of these. Typing
+  // your own name and address into a form that has them is busywork.
+  useEffect(() => {
+    if (!user) return
+    setShipping((prev) => ({
+      ...prev,
+      fullName: prev.fullName || user.name || '',
+      email: prev.email || user.email || ''
+    }))
+  }, [user])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -77,32 +92,28 @@ const PlaceOrder = () => {
     }
     try {
       setSubmitting(true)
-      // Simulate order placement
-      await new Promise((r) => setTimeout(r, 800))
 
-      const order = {
-        id: `ORD${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        items: cartItemsWithDetails,
+      // Only what was bought, never what it costs. The server looks every
+      // price up again and works out the total itself, because anything the
+      // browser sends about money is a suggestion from a stranger.
+      const { order } = await createOrder({
+        items: cartItemsWithDetails.map((item) => ({
+          productId: item._id,
+          size: item.size,
+          quantity: item.quantity
+        })),
         shipping,
         notes,
-        paymentMethod: 'COD',
-        status: 'CONFIRMED',
-        subtotal: Number(subtotal.toFixed(2)),
-        delivery_fee: Number(delivery_fee.toFixed(2)),
-        total: Number((subtotal + delivery_fee).toFixed(2))
-      }
-      try {
-        localStorage.setItem('last_order', JSON.stringify(order))
-        const existing = JSON.parse(localStorage.getItem('orders') || '[]')
-        localStorage.setItem('orders', JSON.stringify([order, ...existing]))
-      } catch { /* localStorage unavailable - order still confirmed in UI */ }
+        paymentMethod: 'COD'
+      })
 
       clearCart()
-      toast.success('Order placed with Cash on Delivery')
-      navigate(`/orders?orderId=${order.id}`)
-    } catch {
-      toast.error('Failed to place order, please try again')
+      toast.success('Order placed. Check your email for the confirmation.')
+      navigate(`/orders?ref=${order.reference}`)
+    } catch (error) {
+      // The real reason, not a generic one - "one of the items in your cart
+      // is no longer available" is something you can act on.
+      toast.error(error.message)
     } finally {
       setSubmitting(false)
     }
