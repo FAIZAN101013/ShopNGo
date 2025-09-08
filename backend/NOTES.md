@@ -85,16 +85,34 @@ The request goes **down** the files and the answer comes back **up**.
 ```
 backend/
 ├── .env                 SECRETS. Password. Never goes to GitHub.
+├── .env.example         The same list with fake values. This one IS committed.
 ├── .gitignore           List of files git must ignore.
 ├── server.js            The front door. Starts everything.
 ├── config/
-│   └── db.js            Connects to MongoDB.
-├── models/
-│   └── productModel.js  The SHAPE of a product.
-├── controllers/
-│   └── productController.js   The WORK. Talks to the database.
-└── routes/
-    └── productRoute.js  The MAP. URL -> which function.
+│   ├── db.js            Connects to MongoDB.
+│   └── mailer.js        The only file that knows how to send email.
+├── models/              The SHAPE of each thing.
+│   ├── productModel.js
+│   ├── userModel.js
+│   ├── otpModel.js      One-time codes. Deletes itself when they expire.
+│   └── orderModel.js
+├── controllers/         The WORK. Talks to the database.
+│   ├── productController.js
+│   ├── userController.js
+│   └── orderController.js
+├── middleware/
+│   └── auth.js          The bouncer. Runs BEFORE a protected controller.
+├── routes/              The MAP. URL -> which function.
+│   ├── productRoute.js
+│   ├── userRoute.js
+│   └── orderRoute.js
+├── emails/
+│   └── templates.js     What the four emails look like.
+├── utils/
+│   ├── token.js         Makes and shapes JWTs.
+│   └── otp.js           Issues and checks 6 digit codes.
+└── scripts/
+    └── seed.js          Loads the 73 products in. Run by hand, never on boot.
 ```
 
 ### Why so many folders?
@@ -465,40 +483,313 @@ progress, not failure.
 
 ---
 
-## 10. What I have built so far
+## 10. Passwords — the one thing I must never store
+
+A password is the only thing in the database I am not allowed to know.
+
+If someone steals my `users` collection and the passwords are readable, they
+do not just own my shop. Most people reuse passwords, so they own those
+people's email, and then everything else.
+
+So I never store the password. I store a **hash** of it.
+
+```
+   SIGN UP                              SIGN IN
+   "hunter22"                           "hunter22"
+       |                                    |
+       v                                    v
+   bcrypt.hash()                     bcrypt.compare("hunter22", stored)
+       |                                    |
+       v                                    v
+   $2b$10$N9qo8uLO...            "does this password produce that hash?"
+       |                                    |
+       v                                    v
+   saved in MongoDB                     true / false
+```
+
+A hash only goes **one way**. From "hunter22" you can get the hash. From the
+hash you cannot get "hunter22" back. So checking a password is not "read the
+password and compare" — it is "hash what they typed and see if it matches".
+
+### Why bcrypt and not SHA-256
+
+SHA-256 is *fast*, which sounds good and is actually the problem. Fast means
+an attacker with my stolen database can test billions of guesses a second.
+
+bcrypt is **deliberately slow**. `bcrypt.hash(password, 10)` means "make this
+take 2^10 rounds of work" — about a tenth of a second.
+
+```
+  A tenth of a second, once, when I sign in    ->  I do not notice
+  A tenth of a second x 1,000,000,000 guesses  ->  4 years
+```
+
+And bcrypt **salts** every hash automatically: a random value mixed in before
+hashing. Two people with the same password get different hashes, so cracking
+one tells you nothing about the other.
+
+That is the whole reason the hash starts with `$2b$10$` — that is bcrypt
+recording its own version, its cost, and the salt inside the string.
+
+### The rule I broke first
+
+My React version hashed the password **in the browser** with SHA-256. That is
+security theatre. Whatever the browser sends is what the server accepts, so
+the hash *becomes* the password. Hashing has to happen on the server.
+
+---
+
+## 11. JWT — the wristband
+
+HTTP has no memory. Every request arrives as a total stranger. So after
+signing in, how does the next request prove who it is?
+
+The answer is a token: a small signed note that says "this is user 6a97cab8".
+
+```
+   POST /api/user/login
+   { email, password }
+          |
+          v
+   password correct?  --no-->  401 "Email or password is incorrect"
+          |
+         yes
+          v
+   jwt.sign({ id: user._id }, JWT_SECRET)
+          |
+          v
+   eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjZhOTdjYWI4In0.pir52s7qToSC...
+   \______ header ____/ \______ payload _____/ \_ signature _/
+```
+
+Three parts separated by dots:
+
+| Part | What it is | Secret? |
+| --- | --- | --- |
+| header | which algorithm | no |
+| payload | `{ id, tokenVersion, expiry }` | **no — readable by anyone** |
+| signature | header+payload hashed with `JWT_SECRET` | this is the whole point |
+
+**A JWT is not encrypted.** Paste one into jwt.io and it shows you the
+payload. So the payload gets an id and nothing private — never a password,
+never an address.
+
+What the signature buys is that nobody can *change* it. Edit one character of
+the payload and the signature no longer matches, because producing a matching
+signature needs `JWT_SECRET`, which only my server has.
+
+It is a festival wristband. Anyone can look at it. Nobody can fake it.
+
+### Then every later request carries it
+
+```
+   GET /api/orders
+   Authorization: Bearer eyJhbGciOi...
+          |
+          v
+   middleware/auth.js  ->  jwt.verify(token, JWT_SECRET)
+          |                       |
+        valid                   invalid / expired
+          |                       |
+          v                       v
+   req.user = user            401, and the browser goes to /login
+   next()
+```
+
+### The bit that surprised me
+
+The server keeps **no list of who is signed in**. That is the trade a JWT
+makes: nothing to look up, but also nothing to switch off. Signing out just
+throws the token away on my side — the token itself stays valid until it
+expires.
+
+That is why the user model has `tokenVersion`. Resetting a password bumps it,
+and the middleware refuses any token carrying the old number. Without that, a
+stolen token would survive the password change meant to shut it out.
+
+---
+
+## 12. One-time codes, and sending email
+
+Anyone can type anyone's email address into a signup form. So an account
+starts with `verified: false` and cannot be signed into until a code sent to
+that address comes back.
+
+```
+   register  ->  account created, verified: false
+                 6 random digits generated
+                 the CODE is emailed
+                 a bcrypt HASH of the code is saved
+                        |
+                        v
+   verify    ->  bcrypt.compare(typed code, stored hash)
+                        |
+                     matches
+                        |
+                        v
+                 verified: true, code deleted, token issued
+```
+
+Four things that each stop a real attack:
+
+1. **The code is hashed too.** Six digits is a tiny secret; someone reading
+   the database should not be able to use what they find.
+2. **`crypto.randomInt`, not `Math.random`.** `Math.random` is predictable —
+   given a few codes you can work out the next one.
+3. **Five attempts.** Guessing 000000–999999 is cheap with unlimited tries.
+4. **Ten minute expiry**, using a MongoDB **TTL index**: `expires: 0` on the
+   `expiresAt` field means MongoDB deletes the document by itself. No cleanup
+   job to write and forget.
+
+### The thing that reads wrong but is right
+
+```js
+// forgot-password, for an address with no account
+return res.json({ success: true, message: "If that address has an account..." })
+```
+
+Answering "no account with that email" would be honest and would hand anyone
+a free tool for finding out who shops here. Same answer either way. Same
+reason login says "email **or** password is incorrect" rather than which.
+
+### SMTP in one picture
+
+```
+   my server  --SMTP over TLS-->  smtp.gmail.com  ----->  their inbox
+              port 465
+```
+
+- **Port 465** is TLS from the first byte. **587** starts in the clear and
+  upgrades. That is the only reason `secure: port === 465` exists.
+- Gmail rejects my normal password. It needs an **App Password**: 2-Step
+  Verification on, then a generated 16 character password used only by this.
+- `MAIL_DRY_RUN=1` prints the email to the terminal instead of sending it —
+  which is how I tested the whole signup flow without emailing anyone.
+
+### Loud failures and quiet ones
+
+Not every email matters the same amount:
+
+| Email | If it fails |
+| --- | --- |
+| verification code | **fail the request** — the account is useless without it |
+| welcome | log it and move on — verification already worked |
+| order receipt | log it and move on — **the order is already placed** |
+
+Telling someone their order failed because a receipt did not send would be a
+lie about the important thing.
+
+---
+
+## 13. Orders — the browser is a stranger
+
+The rule that matters:
+
+> The browser sends **what** was bought. Never **what it costs**.
+
+```
+   BROWSER SENDS                  SERVER DOES
+   productId: 6a97c58c...   ->    look the product up in MongoDB
+   size: "M"                      read the REAL price: $100
+   quantity: 2                    subtotal = 100 x 2
+   price: 0.01           <-- ignored completely
+```
+
+I tested it by sending `price: 0.01` for a $100 top. The order came back at
+$100. Anything arriving in a request body was typed by whoever sent it, and
+`curl` will happily send whatever I like.
+
+### But the line items still copy the name and price
+
+That looks like the opposite, and is not:
+
+```js
+items: [{ productId, name, price, image, size, quantity }]
+```
+
+Prices change and products get deleted. A **receipt has to keep saying what
+was bought and for how much, forever**. If the order only pointed at a
+product, last year's order would silently change price when I run a sale.
+
+Live data points at the product. A record copies it.
+
+### Protecting a route is one line
+
+```js
+orderRouter.use(requireAuth)   // everything below this needs a valid token
+```
+
+Applied to the whole router rather than repeated on each route, so a route I
+add next month is protected **by default** instead of protected only if I
+remember.
+
+And the ownership check is part of the query, not a check afterwards:
+
+```js
+await orderModel.findOne({ reference: req.params.reference, user: req.user._id })
+```
+
+A wrong reference and somebody else's order both come back as "not found",
+which is the only thing either of them should tell you.
+
+---
+
+## 14. What I have built so far
 
 ```
 [x] Express server running on port 4000
 [x] Secrets in .env, protected by .gitignore
 [x] Connected to MongoDB Atlas
 [x] Product model with 9 fields
-[x] GET  /api/products  - list all products
-[x] POST /api/products  - add a product
+[x] 73 real products seeded, images served from /images
+[x] Accounts: bcrypt passwords, emailed verification codes, JWT sessions
+[x] Password reset by email, which also signs out every old token
+[x] Orders stored per account, priced by the server, receipt emailed
+```
+
+Every endpoint:
+
+```
+        PUBLIC                              NEEDS A TOKEN
+GET    /api/products                 GET  /api/user/profile
+POST   /api/products                 PUT  /api/user/profile
+POST   /api/user/register            POST /api/orders
+POST   /api/user/verify              GET  /api/orders
+POST   /api/user/resend-code         GET  /api/orders/:reference
+POST   /api/user/login
+POST   /api/user/forgot-password
+POST   /api/user/reset-password
 ```
 
 Working proof:
 
 ```
-GET  (before)  {"success":true,"products":[]}
-POST           {"success":true,"message":"Product Added", ...}
-GET  (after)   {"success":true,"products":[{"name":"Test Shirt", ...}]}
+register            {"success":true,"requiresVerification":true}
+verify (wrong)      {"success":false,"message":"That code is not right. 4 tries left."}
+verify (right)      {"success":true,"token":"eyJhbGci..."}
+/api/orders no token{"success":false,"message":"Please sign in to continue"}
+order sent price 0.01 on a $100 item -> charged $100
+reset password      -> the old token is instantly refused
 ```
 
 ### Next
 
 ```
-[ ] Seed my 52 real products from assets.js into the database
-[ ] User model + register / login
-[ ] Password hashing (bcrypt) and JWT tokens
-[ ] Middleware to protect routes
-[ ] Orders API
-[ ] Connect React to the API and delete all the localStorage code
+[x] Seed my 73 real products from assets.js into the database
+[x] User model + register / login
+[x] Password hashing (bcrypt) and JWT tokens
+[x] Email: verification codes, welcome, password reset, order receipts
+[x] Middleware to protect routes
+[x] Orders API
+[x] Connect React to the API and delete the localStorage account code
+[ ] Admin pages: add products, move an order to SHIPPED
+[ ] Real payments instead of the Stripe placeholder
 [ ] Deploy
 ```
 
 ---
 
-## 11. How to actually remember all this
+## 15. How to actually remember all this
 
 I do not need to memorise it. Professional developers look this up all the
 time. What matters is knowing the **shape** of the answer, so I know what to
