@@ -8,6 +8,9 @@
     "start": "node server.js",
     "seed": "node scripts/seed.js"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

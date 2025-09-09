@@ -1,0 +1,66 @@
+# Render blueprint for the ShopNGo API.
+#
+# With this file in the repo, Render reads the whole setup instead of asking
+# for it field by field: New > Blueprint > pick this repo.
+#
+# Every secret below is marked `sync: false`, which means "ask me for this in
+# the dashboard". Values are never written into this file - it is committed,
+# and a committed password is a leaked password.
+#
+# The frontend is NOT here. It is a static site on Vercel and stays there.
+
+services:
+  - type: web
+    name: shopngo-api
+    runtime: node
+    plan: free
+    region: singapore # closest of Render's regions to India
+
+    # The repo holds frontend/ and backend/ side by side, so Render is told
+    # to work inside backend/ rather than at the root.
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+
+    # Render calls this after a deploy to decide whether the new version
+    # actually came up. /health answers 503 if MongoDB is unreachable, so a
+    # broken database fails the deploy instead of quietly going live.
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+
+      # Render provides PORT itself and the server already reads it, so it is
+      # deliberately not set here.
+
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        # Render generates a long random value and keeps it. Nobody, me
+        # included, ever needs to see it.
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: OTP_TTL_MINUTES
+        value: "10"
+
+      - key: FRONTEND_URL
+        value: https://shop-n-go.vercel.app
+      - key: ALLOWED_ORIGINS
+        value: https://shop-n-go.vercel.app
+
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_DRY_RUN
+        value: "0"

@@ -143,6 +143,7 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `JWT_EXPIRES_IN` | Token lifetime, e.g. `7d` |
 | `OTP_TTL_MINUTES` | How long an emailed code stays usable |
 | `FRONTEND_URL` | Used for the links inside emails |
+| `ALLOWED_ORIGINS` | Comma-separated sites allowed to call the API; empty means all |
 | `ADMIN_EMAIL` | Gets a copy of every order |
 | `SMTP_HOST` · `SMTP_PORT` · `SMTP_USER` · `SMTP_PASS` | Mail server. For Gmail, `SMTP_PASS` must be an **App Password** |
 | `MAIL_FROM` | The From line, e.g. `ShopNGo <you@example.com>` |
@@ -194,6 +195,7 @@ ShopNGo/
 │   ├── scripts/seed.js        # Loads the catalog into MongoDB
 │   ├── public/images/         # Product photos, served at /images
 │   └── NOTES.md               # Learning notes: bcrypt, JWT, OTP, orders
+├── render.yaml                # Render blueprint for deploying the API
 └── frontend/
     └── src/
         ├── main.jsx           # App entry, router + context providers
@@ -226,6 +228,52 @@ ShopNGo/
 
 ---
 
+## 🚢 Deployment
+
+The frontend is a static site; the API is a Node process that has to stay running. They are deployed separately.
+
+| Piece | Where | Cost |
+|---|---|---|
+| Frontend | Vercel — [shop-n-go.vercel.app](https://shop-n-go.vercel.app/) | free |
+| API | Render (blueprint in `render.yaml`) | free |
+| Database | MongoDB Atlas M0 | free |
+| Email | Gmail SMTP + App Password | free |
+
+### 1. Let Atlas accept the API
+
+Render's servers get changing IP addresses, so a home-IP allowlist entry will not work. In **Atlas → Network Access**, allow `0.0.0.0/0`. The connection is still protected by the database username and password.
+
+### 2. Deploy the API
+
+In Render: **New → Blueprint**, choose this repo. `render.yaml` supplies the build command, the health check and the non-secret variables; Render then prompts for the secrets (`MONGODB_URI`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `ADMIN_EMAIL`) and generates `JWT_SECRET` itself.
+
+You end up with a URL like `https://shopngo-api.onrender.com`. Check it:
+
+```bash
+curl https://shopngo-api.onrender.com/health
+# {"success":true,"database":"connected","uptime":12}
+```
+
+### 3. Point the frontend at it
+
+In Vercel → Settings → Environment Variables:
+
+```env
+VITE_API_URL=https://shopngo-api.onrender.com
+```
+
+**Then redeploy.** Vite substitutes this at *build* time, not at page load, so an existing build keeps calling whatever URL it was built with.
+
+### 4. Close the door behind you
+
+On Render, set `ALLOWED_ORIGINS` and `FRONTEND_URL` to the Vercel URL. Without `ALLOWED_ORIGINS`, any site on the internet may call the API — including someone hosting a copy of the shop on your database and your email quota.
+
+### Free-tier caveat
+
+A free Render service **sleeps after 15 minutes without traffic**, so the first request afterwards takes roughly 50 seconds. Pointing an uptime pinger (e.g. cron-job.org) at `/health` every 14 minutes keeps it awake.
+
+---
+
 ## 🛣️ Roadmap
 
 - [x] Express + MongoDB backend with real product and order APIs
@@ -234,7 +282,7 @@ ShopNGo/
 - [ ] Admin dashboard for product and order management
 - [ ] Server-side Stripe / Razorpay checkout sessions
 - [ ] Cart tied to the account rather than the browser
-- [ ] Deployment
+- [x] Deployment: frontend on Vercel, API on Render
 
 ---
 
