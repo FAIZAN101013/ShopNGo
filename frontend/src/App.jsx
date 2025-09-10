@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 
 import Home from './pages/Home'
 import Collection from './pages/Collection'
@@ -22,13 +22,20 @@ import ScrollToTop from './components/ScrollToTop'
 import RequireAuth from './components/RequireAuth'
 import { ToastContainer } from 'react-toastify';
 
+// The auth pages stand on their own. A nav bar full of ways to leave, and a
+// footer of links, are both invitations to abandon a two field form.
+const AUTH_ROUTES = ['/login', '/register', '/verify-email', '/forgot-password']
+
 const App = () => {
+  const { pathname } = useLocation()
+  const showChrome = !AUTH_ROUTES.includes(pathname)
+
   return (
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
       <ToastContainer position="bottom-right" autoClose={2500} newestOnTop />
       <ScrollToTop />
-      <NavBar />
-      <SearchBar />
+      {showChrome && <NavBar />}
+      {showChrome && <SearchBar />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/collection" element={<Collection />} />
@@ -49,7 +56,7 @@ const App = () => {
 
         <Route path='*' element={<NotFound />} />
       </Routes>
-      <Footer />
+      {showChrome && <Footer />}
 
     </div>
   )

@@ -61,7 +61,22 @@ const AuthLayout = ({ eyebrow, heading, points, children }) => {
         </aside>
 
         {/* Form panel */}
-        <div className="p-6 sm:p-10">{children}</div>
+        <div className="p-6 sm:p-10">
+          {/* The nav bar is hidden on these pages, and the brand link in the
+              dark panel is hidden below lg - so on a phone this is the only
+              way back to the shop. */}
+          <Link
+            to="/"
+            className="mb-8 inline-flex items-center gap-2 text-xs font-medium tracking-[0.3em] text-gray-400 transition-colors hover:text-gray-900 lg:hidden"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            SHOPNGO
+          </Link>
+
+          {children}
+        </div>
       </div>
     </div>
   )
