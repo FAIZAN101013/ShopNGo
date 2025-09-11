@@ -34,6 +34,18 @@ const getTransporter = () => {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+
+    // Force IPv4. smtp.gmail.com resolves to both an A and an AAAA record,
+    // and Node will happily pick the IPv6 one - which fails with ENETUNREACH
+    // on a host that has no IPv6 route out, as Render's containers do.
+    family: 4,
+
+    // Fail in seconds rather than the default two minutes. If the port is
+    // blocked, the person waiting on the signup form should be told so
+    // quickly instead of watching a spinner for a minute and a half.
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
 
   return transporter;

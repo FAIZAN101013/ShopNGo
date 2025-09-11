@@ -48,7 +48,10 @@ services:
       - key: FRONTEND_URL
         value: https://shop-n-go.vercel.app
       - key: ALLOWED_ORIGINS
-        value: https://shop-n-go.vercel.app
+        # The production domain, plus the tail shared by every branch and
+        # preview build on this Vercel account. A bare *.vercel.app would let
+        # anybody's Vercel site call this API.
+        value: https://shop-n-go.vercel.app,*-mohammed-faizans-projects-40315828.vercel.app
 
       - key: ADMIN_EMAIL
         sync: false

@@ -42,7 +42,16 @@ app.use(
       // asking for product photos. There is no browser to protect here.
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      // An entry may start with "*" to match a suffix. Vercel gives every
+      // branch and every preview build its own hostname, so listing them one
+      // by one is impossible - but "*.vercel.app" on its own would let any
+      // Vercel site anywhere call this API. The useful middle is the tail
+      // that is unique to this account.
+      const permitted = allowedOrigins.some((entry) =>
+        entry.startsWith("*") ? origin.endsWith(entry.slice(1)) : entry === origin
+      );
+
+      if (allowedOrigins.length === 0 || permitted) {
         return callback(null, true);
       }
 
