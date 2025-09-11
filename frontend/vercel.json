@@ -1,16 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-
-  "//": [
-    "React Router does its routing in the browser, so /login only exists once",
-    "index.html has loaded and run. Asked for /login directly - a refresh, a",
-    "shared link, a bookmark - Vercel looked for a file at that path, found",
-    "nothing and returned its own 404 before React ever started.",
-    "",
-    "This hands every unknown path to index.html and lets the router take it",
-    "from there. Real files are still served normally: Vercel checks the",
-    "filesystem first, so /assets/index-abc.js and /vite.svg are unaffected."
-  ],
-
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
