@@ -1,0 +1,30 @@
+# A free Render service goes to sleep after 15 minutes with no traffic, and
+# the next visitor then waits about 50 seconds for it to wake up. On a
+# portfolio link somebody clicks once, that is the worst possible moment.
+#
+# So: knock on the door every 14 minutes.
+#
+# Only between 00:00 and 18:59 UTC - that is 05:30 to 00:29 in India, so the
+# API stays awake through the whole day here and is allowed to sleep
+# overnight. That is deliberate. Render's free tier gives 750 instance hours
+# a month shared across every free service on the account; pinging around the
+# clock would use 720 of them on this one alone and starve the others.
+
+name: Keep the API awake
+
+on:
+  schedule:
+    - cron: "*/14 0-18 * * *"
+  # So it can also be run by hand from the Actions tab, which is the quickest
+  # way to wake the API before showing the site to someone.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        # --max-time 120 because a cold start genuinely takes ~50 seconds.
+        # --fail makes a 503 (server up, database unreachable) fail the run
+        # rather than passing quietly.
+        run: curl --fail --silent --show-error --max-time 120 https://shopngo-api.onrender.com/health
