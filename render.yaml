@@ -55,6 +55,12 @@ services:
 
       - key: ADMIN_EMAIL
         sync: false
+
+      # Render's free tier blocks outbound SMTP, so mail leaves over HTTPS
+      # through Brevo instead. The SMTP settings below are kept for running
+      # locally, where port 465 is open.
+      - key: BREVO_API_KEY
+        sync: false
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
