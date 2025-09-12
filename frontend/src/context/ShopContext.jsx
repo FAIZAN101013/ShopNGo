@@ -2,19 +2,50 @@ import { createContext } from "react";
 import React from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { fetchProducts } from "../services/api";
-import { useState, useEffect } from "react";
+import { fetchProducts, fetchCart, saveCart } from "../services/api";
+import { useState, useEffect, useContext, useRef } from "react";
+import { AuthContext } from "./AuthContext";
 
 export const ShopContext = createContext();
+
+/*
+  Two carts meet when somebody signs in: whatever they put in the basket as a
+  guest, and whatever is already on the account from another day or another
+  device. Neither one deserves to be thrown away.
+
+  For a size held in both, take the LARGER quantity rather than the sum.
+  Adding them looks generous until the same cart syncs twice and somebody
+  ends up buying four of something they picked once.
+*/
+const mergeCarts = (serverCart, localCart) => {
+  const merged = structuredClone(serverCart || {});
+
+  for (const productId in localCart || {}) {
+    merged[productId] = merged[productId] || {};
+    for (const size in localCart[productId]) {
+      merged[productId][size] = Math.max(
+        merged[productId][size] || 0,
+        localCart[productId][size]
+      );
+    }
+  }
+
+  return merged;
+};
+
+const sameCart = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 const ShopContextProvider = (props) => {
     const currency = '$';
     const delivery_fee = 10;
 
+    const { user, booting } = useContext(AuthContext);
+
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
-    // Seed the cart from storage so a refresh, a shared link or a hard
-    // navigation does not silently empty it.
+    // Seeded from storage so a refresh, a shared link or a hard navigation
+    // does not silently empty it. For a guest this IS the cart; for someone
+    // signed in it is a local copy of the one on their account.
     const [cartItems, setCartItems] = useState(() => {
         try {
             const stored = JSON.parse(localStorage.getItem('cart') || '{}');
@@ -31,6 +62,15 @@ const ShopContextProvider = (props) => {
     const [products, setProducts] = useState([]);
     const [productsLoading, setProductsLoading] = useState(true);
     const [productsError, setProductsError] = useState('');
+
+    // True once the account's cart has been fetched and merged in. Until
+    // then nothing is pushed back, or the empty first render would overwrite
+    // a real cart on the server with {}.
+    const [accountCartReady, setAccountCartReady] = useState(false);
+
+    // Read inside an effect that must not re-run when the cart changes.
+    const cartRef = useRef(cartItems);
+    useEffect(() => { cartRef.current = cartItems; }, [cartItems]);
 
     useEffect(() => {
         let cancelled = false;
@@ -53,6 +93,75 @@ const ShopContextProvider = (props) => {
         // React warns about setting state on something that is gone.
         return () => { cancelled = true; };
     }, []);
+
+    /*
+      Signing in: pull the account's cart, fold the guest cart into it, and
+      push the result back. Signing out: forget it, because it belongs to the
+      account and the next person at this browser should not inherit it.
+    */
+    const previousUserId = useRef(null);
+
+    useEffect(() => {
+        // Still checking the stored token. Acting now would look like a
+        // signed-out user and wipe the cart on every refresh.
+        if (booting) return;
+
+        const userId = user?.id || null;
+        const wasSignedIn = previousUserId.current;
+        previousUserId.current = userId;
+
+        if (!userId) {
+            if (wasSignedIn) {
+                setCartItems({});
+                setCartItemsCount(0);
+            }
+            setAccountCartReady(false);
+            return;
+        }
+
+        // Already loaded for this same account - a profile save re-creates
+        // the user object and would otherwise re-run the whole merge.
+        if (wasSignedIn === userId && accountCartReady) return;
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const serverCart = await fetchCart();
+                if (cancelled) return;
+
+                const merged = mergeCarts(serverCart, cartRef.current);
+                setCartItems(merged);
+
+                // Only write when the guest cart actually added something.
+                if (!sameCart(merged, serverCart)) await saveCart(merged);
+            } catch {
+                // Offline or the API is down. The local cart still works;
+                // it just will not follow them to another device today.
+            } finally {
+                if (!cancelled) setAccountCartReady(true);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [user, booting, accountCartReady]);
+
+    /*
+      Push changes up. Debounced, because holding the + button on a quantity
+      box would otherwise be one request per click.
+    */
+    useEffect(() => {
+        if (!user || !accountCartReady) return;
+
+        const timer = setTimeout(() => {
+            saveCart(cartItems).catch(() => {
+                // Nothing to tell the customer here. The cart on screen is
+                // right; the copy on the server catches up on the next change.
+            });
+        }, 700);
+
+        return () => clearTimeout(timer);
+    }, [cartItems, user, accountCartReady]);
 
     // Helper function to calculate total items in cart
     const calculateCartCount = (cartData) => {

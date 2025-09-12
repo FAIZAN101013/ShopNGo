@@ -123,6 +123,19 @@ export const fetchProfile = () => request('/api/user/profile', { auth: true })
 export const saveProfile = (payload) =>
   request('/api/user/profile', { method: 'PUT', auth: true, body: payload })
 
+/* ---------- cart ---------- */
+
+export const fetchCart = async () => {
+  const data = await request('/api/cart', { auth: true })
+  return data.cart || {}
+}
+
+// The whole cart, not one item. The browser already knows the finished
+// state, so a dropped request loses a save rather than leaving the two
+// copies disagreeing about a quantity forever.
+export const saveCart = (cart) =>
+  request('/api/cart', { method: 'PUT', auth: true, body: { cart } })
+
 /* ---------- orders ---------- */
 
 export const createOrder = (payload) =>

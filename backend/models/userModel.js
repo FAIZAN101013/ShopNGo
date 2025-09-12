@@ -30,6 +30,19 @@ const userSchema = new mongoose.Schema(
 
     verified: { type: Boolean, default: false },
 
+    /*
+      The cart, shaped exactly as the browser holds it:
+        { "<productId>": { "M": 2, "L": 1 } }
+
+      Kept on the user rather than in its own collection because it is only
+      ever read and written whole, for one person. A separate collection
+      would buy nothing and cost a join.
+
+      Mixed means Mongoose does not watch it for changes, so it is always
+      written with an explicit $set rather than by mutating and saving.
+    */
+    cart: { type: mongoose.Schema.Types.Mixed, default: {} },
+
     // Bumped whenever the password changes, so tokens handed out before the
     // reset stop working. Without this, stealing a token beats changing the
     // password.
