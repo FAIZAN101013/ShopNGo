@@ -8,29 +8,31 @@ import ProductGridSkeleton from '../components/ProductGridSkeleton';
 
 const PRODUCTS_PER_PAGE = 12;
 
-const CATEGORIES = [
-  { value: 'Men', label: 'Men' },
-  { value: 'Women', label: 'Women' },
-  { value: 'Kids', label: 'Kids' },
-  { value: 'Accessories', label: 'Accessories' }
-];
+/*
+  The filter lists used to be typed out by hand, and they had drifted from
+  the catalogue in both directions: "Accessories" was offered as a category
+  when no product has one, and six types were listed - Jewelry, Watches,
+  Belts, Scarves, Hats, Ethnic - that nothing in the shop has ever been.
+  Every one of them was a filter guaranteed to return nothing.
 
-const SUB_CATEGORIES = [
-  { value: 'Topwear', label: 'Top-wear' },
-  { value: 'Bottomwear', label: 'Bottom-wear' },
-  { value: 'Dresses', label: 'Dresses' },
-  { value: 'Formal', label: 'Formal Wear' },
-  { value: 'Ethnic', label: 'Ethnic Wear' },
-  { value: 'Activewear', label: 'Active-wear' },
-  { value: 'Winterwear', label: 'Winter-wear' },
-  { value: 'Footwear', label: 'Footwear' },
-  { value: 'Bags', label: 'Bags & Purses' },
-  { value: 'Jewelry', label: 'Jewelry' },
-  { value: 'Watches', label: 'Watches' },
-  { value: 'Belts', label: 'Belts' },
-  { value: 'Scarves', label: 'Scarves & Wraps' },
-  { value: 'Hats', label: 'Hats & Caps' }
-];
+  They are now read off the products themselves, so a filter can only exist
+  if something matches it, and adding a product in a new category makes its
+  filter appear with no code change.
+*/
+const NICER_LABELS = {
+  Topwear: 'Top-wear',
+  Bottomwear: 'Bottom-wear',
+  Winterwear: 'Winter-wear',
+  Activewear: 'Active-wear',
+  Formal: 'Formal Wear',
+  Bags: 'Bags & Purses'
+};
+
+const toOptions = (values) =>
+  [...new Set(values)]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b))
+    .map((value) => ({ value, label: NICER_LABELS[value] || value }));
 
 const PRICE_RANGES = [
   { value: 'all', label: 'All Prices' },
@@ -53,6 +55,9 @@ const Collection = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const gridTopRef = useRef(null);
+
+  const categoryOptions = useMemo(() => toOptions(products.map((p) => p.category)), [products]);
+  const subCategoryOptions = useMemo(() => toOptions(products.map((p) => p.subCategory)), [products]);
 
   useEffect(() => {
     document.title = 'Collection | ShopNGo';
@@ -122,12 +127,12 @@ const Collection = () => {
   const activeChips = [
     ...category.map((v) => ({
       key: `cat-${v}`,
-      label: labelFor(CATEGORIES, v),
+      label: labelFor(categoryOptions, v),
       remove: () => toggleCategory(v)
     })),
     ...subCategory.map((v) => ({
       key: `sub-${v}`,
-      label: labelFor(SUB_CATEGORIES, v),
+      label: labelFor(subCategoryOptions, v),
       remove: () => toggleSubCategory(v)
     })),
     ...(priceRange !== 'all'
@@ -203,7 +208,7 @@ const Collection = () => {
           </FilterGroup>
 
           <FilterGroup title="Category" count={category.length}>
-            {CATEGORIES.map((cat) => (
+            {categoryOptions.map((cat) => (
               <label key={cat.value} className={optionRow}>
                 <input
                   className="h-4 w-4 accent-black"
@@ -217,9 +222,9 @@ const Collection = () => {
             ))}
           </FilterGroup>
 
-          {/* Fourteen options, so this one starts closed. */}
+          {/* The longest list, so this one starts closed. */}
           <FilterGroup title="Type" count={subCategory.length} defaultOpen={false}>
-            {SUB_CATEGORIES.map(({ value, label }) => (
+            {subCategoryOptions.map(({ value, label }) => (
               <label key={value} className={optionRow}>
                 <input
                   className="h-4 w-4 accent-black"
