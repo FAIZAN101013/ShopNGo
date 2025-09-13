@@ -137,4 +137,60 @@ const getMyOrder = async (req, res) => {
   }
 };
 
-export { placeOrder, listMyOrders, getMyOrder };
+/* ---------- admin ---------- */
+
+/*
+  Every order in the shop, newest first.
+
+  Capped rather than returning the lot: an admin page that fetches ten
+  thousand orders to show the first twenty is a page that stops loading one
+  day and nobody knows why.
+*/
+const listAllOrders = async (req, res) => {
+  try {
+    const orders = await orderModel
+      .find({})
+      .populate("user", "name email")
+      .sort({ createdAt: -1 })
+      .limit(200);
+
+    res.json({ success: true, orders });
+  } catch (error) {
+    console.error("list all orders failed:", error);
+    res.status(500).json({ success: false, message: "Could not load the orders" });
+  }
+};
+
+const STATUSES = ["CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "CANCELLED"];
+
+/*
+  Move an order along.
+
+  The status list lives on the model as an enum, and is repeated here so a
+  wrong value comes back as a sentence naming the allowed ones rather than a
+  Mongoose ValidationError.
+*/
+const updateOrderStatus = async (req, res) => {
+  try {
+    const status = String(req.body.status || "").toUpperCase();
+
+    if (!STATUSES.includes(status)) {
+      return badRequest(res, `Status must be one of: ${STATUSES.join(", ")}`);
+    }
+
+    const order = await orderModel.findOneAndUpdate(
+      { reference: req.params.reference },
+      { status },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+    res.json({ success: true, order });
+  } catch (error) {
+    console.error("update order status failed:", error);
+    res.status(500).json({ success: false, message: "Could not update that order" });
+  }
+};
+
+export { placeOrder, listMyOrders, getMyOrder, listAllOrders, updateOrderStatus };

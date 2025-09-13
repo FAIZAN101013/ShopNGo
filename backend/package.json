@@ -6,7 +6,8 @@
   "scripts": {
     "server": "nodemon server.js",
     "start": "node server.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "make-admin": "node scripts/make-admin.js"
   },
   "engines": {
     "node": ">=20"

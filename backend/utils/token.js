@@ -21,6 +21,10 @@ const publicUser = (user) => ({
   name: user.name,
   email: user.email,
   verified: user.verified,
+  // The browser uses this to decide whether to show the admin link. It is a
+  // convenience, not a permission - the server checks the role again on
+  // every admin route, because anyone can edit their own JavaScript.
+  role: user.role || "user",
   createdAt: user.createdAt,
 });
 

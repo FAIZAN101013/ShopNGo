@@ -1,7 +1,14 @@
 import express from "express";
 
-import { placeOrder, listMyOrders, getMyOrder } from "../controllers/orderController.js";
+import {
+  placeOrder,
+  listMyOrders,
+  getMyOrder,
+  listAllOrders,
+  updateOrderStatus,
+} from "../controllers/orderController.js";
 import requireAuth from "../middleware/auth.js";
+import requireAdmin from "../middleware/admin.js";
 
 const orderRouter = express.Router();
 
@@ -15,6 +22,15 @@ orderRouter.use(requireAuth);
 
 orderRouter.post("/", placeOrder);
 orderRouter.get("/", listMyOrders);
+
+/*
+  These two come BEFORE "/:reference". Express takes the first route that
+  matches, and "/:reference" would happily match the word "all" and go
+  looking for an order with that reference.
+*/
+orderRouter.get("/all", requireAdmin, listAllOrders);
+orderRouter.patch("/:reference/status", requireAdmin, updateOrderStatus);
+
 orderRouter.get("/:reference", getMyOrder);
 
 export default orderRouter;
