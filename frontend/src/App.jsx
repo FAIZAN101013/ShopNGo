@@ -14,12 +14,14 @@ import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import Profile from './pages/Profile'
+import Admin from './pages/Admin'
 import NotFound from './pages/NotFound'
 import NavBar from './components/Navbar'
 import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
 import ScrollToTop from './components/ScrollToTop'
 import RequireAuth from './components/RequireAuth'
+import RequireAdmin from './components/RequireAdmin'
 import { ToastContainer } from 'react-toastify';
 
 // The auth pages stand on their own. A nav bar full of ways to leave, and a
@@ -53,6 +55,9 @@ const App = () => {
         <Route path='/placeorder' element={<RequireAuth><PlaceOrder /></RequireAuth>} />
         <Route path='/orders' element={<RequireAuth><Orders /></RequireAuth>} />
         <Route path='/profile' element={<RequireAuth><Profile /></RequireAuth>} />
+
+        {/* Running the shop, rather than shopping in it. */}
+        <Route path='/admin' element={<RequireAdmin><Admin /></RequireAdmin>} />
 
         <Route path='*' element={<NotFound />} />
       </Routes>

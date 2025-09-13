@@ -145,3 +145,26 @@ export const fetchOrders = async () => {
   const data = await request('/api/orders', { auth: true })
   return data.orders || []
 }
+
+/* ---------- admin ---------- */
+
+// Every one of these is refused by the server for a non-admin. The admin
+// pages hiding themselves is only so nobody is offered a button that would
+// fail; it is not what stops anyone.
+
+export const adminCreateProduct = (product) =>
+  request('/api/products', { method: 'POST', auth: true, body: product })
+
+export const adminUpdateProduct = (id, product) =>
+  request(`/api/products/${id}`, { method: 'PUT', auth: true, body: product })
+
+export const adminDeleteProduct = (id) =>
+  request(`/api/products/${id}`, { method: 'DELETE', auth: true })
+
+export const adminFetchOrders = async () => {
+  const data = await request('/api/orders/all', { auth: true })
+  return data.orders || []
+}
+
+export const adminSetOrderStatus = (reference, status) =>
+  request(`/api/orders/${reference}/status`, { method: 'PATCH', auth: true, body: { status } })

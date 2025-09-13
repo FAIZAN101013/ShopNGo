@@ -94,6 +94,17 @@ const ShopContextProvider = (props) => {
         return () => { cancelled = true; };
     }, []);
 
+    // The catalogue is fetched once, which is right for shopping and wrong
+    // for the admin page - adding a product there has to show up in the shop
+    // without a reload.
+    const refreshProducts = async () => {
+        try {
+            setProducts(await fetchProducts());
+        } catch (error) {
+            setProductsError(error.message);
+        }
+    };
+
     /*
       Signing in: pull the account's cart, fold the guest cart into it, and
       push the result back. Signing out: forget it, because it belongs to the
@@ -266,6 +277,7 @@ const ShopContextProvider = (props) => {
         products,
         productsLoading,
         productsError,
+        refreshProducts,
         currency,
         delivery_fee,
         search,

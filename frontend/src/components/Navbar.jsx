@@ -25,7 +25,10 @@ const NavBar = () => {
   const accountLinks = isLoggedIn
     ? [
         { path: "/profile", label: "My Profile" },
-        { path: "/orders", label: "My Orders" }
+        { path: "/orders", label: "My Orders" },
+        // Only shown to staff. The server checks the role again on every
+        // admin route, so hiding the link is tidiness, not the lock.
+        ...(user?.role === "admin" ? [{ path: "/admin", label: "Shop Admin" }] : [])
       ]
     : [
         { path: "/login", label: "Sign In" },

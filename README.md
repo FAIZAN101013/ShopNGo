@@ -29,6 +29,8 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 - 🔑 **Password reset by email** — and changing it invalidates every token issued before
 - 📦 **Orders** — stored per account, **priced by the server**, with a confirmation email
 - 🛡️ **Protected routes** — checkout, orders and profile need a valid token, enforced by middleware
+- 🧺 **Cart on the account** — follows you between devices; guests keep a local one
+- 🗂️ **Admin pages** — add, edit and remove products; move orders from confirmed to delivered
 
 ### Emails
 | When | What arrives |
@@ -52,7 +54,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 | **API** | Express 5 (ESM) |
 | **Database** | MongoDB Atlas via Mongoose 9 |
 | **Auth** | bcryptjs + jsonwebtoken |
-| **Email** | Nodemailer over SMTP |
+| **Email** | Brevo HTTP API, with Nodemailer/SMTP for local use |
 | **Notifications** | `react-toastify` |
 | **Linting** | ESLint 9 |
 | **Payments** | Stripe Payment Link (optional, via env var) |
@@ -126,6 +128,7 @@ If the API is not running, the storefront says so rather than showing an empty s
 | `npm run server` | Start the API with nodemon (restarts on save) |
 | `npm start` | Start the API once |
 | `npm run seed` | Wipe and reload the product catalog |
+| `npm run make-admin <email>` | Promote an existing account to admin |
 
 ---
 
@@ -147,6 +150,7 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `ADMIN_EMAIL` | Gets a copy of every order |
 | `SMTP_HOST` · `SMTP_PORT` · `SMTP_USER` · `SMTP_PASS` | Mail server. For Gmail, `SMTP_PASS` must be an **App Password** |
 | `MAIL_FROM` | The From line, e.g. `ShopNGo <you@example.com>` |
+| `BREVO_API_KEY` | Sends over HTTPS instead of SMTP. Needed on hosts that block outbound SMTP |
 | `MAIL_DRY_RUN` | `1` prints emails to the terminal instead of sending them |
 
 **`frontend/.env`**
@@ -163,7 +167,8 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | Method | Endpoint | Auth | Purpose |
 |---|---|---|---|
 | `GET` | `/api/products` | — | List the catalog |
-| `POST` | `/api/products` | — | Add a product |
+| `POST` | `/api/products` | 🛡️ | Add a product |
+| `PUT` · `DELETE` | `/api/products/:id` | 🛡️ | Edit or remove a product |
 | `POST` | `/api/user/register` | — | Create an account, email a code |
 | `POST` | `/api/user/verify` | — | Confirm the code, return a token |
 | `POST` | `/api/user/resend-code` | — | Send another code |
@@ -171,11 +176,24 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `POST` | `/api/user/forgot-password` | — | Email a reset code |
 | `POST` | `/api/user/reset-password` | — | Set a new password |
 | `GET` · `PUT` | `/api/user/profile` | ✅ | Read / update the signed-in account |
+| `GET` · `PUT` | `/api/cart` | ✅ | Read / replace the cart on your account |
 | `POST` | `/api/orders` | ✅ | Place an order |
 | `GET` | `/api/orders` | ✅ | Your order history |
 | `GET` | `/api/orders/:reference` | ✅ | One of your orders |
+| `GET` | `/api/orders/all` | 🛡️ | Every order in the shop |
+| `PATCH` | `/api/orders/:reference/status` | 🛡️ | Move an order along |
 
-Every response has the shape `{ success, ... }`. Protected routes expect `Authorization: Bearer <token>`.
+Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 🛡️ needs that token to belong to an admin.
+
+### Making someone an admin
+
+There is deliberately no route for this — an endpoint that grants admin is one somebody will eventually find a way to call. Sign the account up normally, then from the `backend/` folder:
+
+```bash
+npm run make-admin you@example.com
+```
+
+They need to sign out and back in afterwards, since the role is carried in the token.
 
 ---
 
@@ -186,13 +204,13 @@ ShopNGo/
 ├── backend/
 │   ├── server.js              # Front door: middleware, routes, error handling
 │   ├── config/                # db.js (Mongo), mailer.js (SMTP)
-│   ├── models/                # product, user, otp, order
-│   ├── controllers/           # The work: product, user, order
-│   ├── middleware/auth.js     # Verifies the JWT, fills in req.user
+│   ├── models/                # product, user, otp, order (cart lives on the user)
+│   ├── controllers/           # The work: product, user, cart, order
+│   ├── middleware/            # auth.js verifies the JWT, admin.js checks the role
 │   ├── routes/                # URL -> controller
 │   ├── emails/templates.js    # The four emails
 │   ├── utils/                 # token.js (JWT), otp.js (codes)
-│   ├── scripts/seed.js        # Loads the catalog into MongoDB
+│   ├── scripts/               # seed.js loads the catalog, make-admin.js promotes an account
 │   ├── public/images/         # Product photos, served at /images
 │   └── NOTES.md               # Learning notes: bcrypt, JWT, OTP, orders
 ├── render.yaml                # Render blueprint for deploying the API
@@ -224,6 +242,7 @@ ShopNGo/
 | `/placeorder` | Checkout | ✅ |
 | `/orders` | Order history | ✅ |
 | `/profile` | Account details | ✅ |
+| `/admin` | Products and orders | 🛡️ admins |
 | `/about` · `/contact` | Informational pages | |
 
 ---
@@ -279,9 +298,10 @@ A free Render service **sleeps after 15 minutes without traffic**, so the first 
 - [x] Express + MongoDB backend with real product and order APIs
 - [x] JWT-based authentication replacing the mock auth
 - [x] Transactional email: verification, welcome, password reset, receipts
-- [ ] Admin dashboard for product and order management
+- [x] Cart tied to the account rather than the browser
+- [x] Admin pages for product and order management
 - [ ] Server-side Stripe / Razorpay checkout sessions
-- [ ] Cart tied to the account rather than the browser
+- [ ] Uploading product images instead of pasting URLs
 - [x] Deployment: frontend on Vercel, API on Render
 
 ---
