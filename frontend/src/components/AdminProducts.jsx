@@ -2,7 +2,13 @@ import React, { useContext, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 
 import { ShopContext } from '../context/ShopContext'
-import { adminCreateProduct, adminUpdateProduct, adminDeleteProduct, imageUrl } from '../services/api'
+import {
+  adminCreateProduct,
+  adminUpdateProduct,
+  adminDeleteProduct,
+  uploadProductImage,
+  imageUrl
+} from '../services/api'
 import FormField, { fieldClass } from './FormField'
 import Alert from './Alert'
 
@@ -12,20 +18,21 @@ const EMPTY = {
   price: '',
   category: '',
   subCategory: '',
-  image: '',
+  image: [],
   sizes: '',
   bestseller: false
 }
 
-// The form holds images and sizes as one line of text each, because typing
-// "S, M, L" is faster than operating a list widget for three values.
+// Sizes stay one line of text, because typing "S, M, L" is faster than
+// operating a list widget for three values. Images do not: they are files
+// now, and a list of thumbnails you can remove beats a line of URLs.
 const toForm = (product) => ({
   name: product.name,
   description: product.description,
   price: String(product.price),
   category: product.category,
   subCategory: product.subCategory,
-  image: product.image.join(', '),
+  image: [...product.image],
   sizes: product.sizes.join(', '),
   bestseller: Boolean(product.bestseller)
 })
@@ -37,6 +44,8 @@ const AdminProducts = () => {
   const [form, setForm] = useState(EMPTY)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [urlDraft, setUrlDraft] = useState('')
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
 
@@ -57,6 +66,35 @@ const AdminProducts = () => {
       : products
     return [...list].sort((a, b) => a.name.localeCompare(b.name))
   }, [products, query])
+
+  const addImages = async (files) => {
+    if (files.length === 0) return
+
+    setUploading(true)
+    setError('')
+    try {
+      // One at a time rather than Promise.all, so a failure half way through
+      // still keeps the images that did upload.
+      for (const file of files) {
+        const url = await uploadProductImage(file)
+        setForm((prev) => ({ ...prev, image: [...prev.image, url] }))
+      }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const addUrl = () => {
+    const url = urlDraft.trim()
+    if (!url) return
+    setForm((prev) => ({ ...prev, image: [...prev.image, url] }))
+    setUrlDraft('')
+  }
+
+  const removeImage = (index) =>
+    setForm((prev) => ({ ...prev, image: prev.image.filter((_, i) => i !== index) }))
 
   const startNew = () => {
     setEditingId(null)
@@ -88,7 +126,6 @@ const AdminProducts = () => {
     const payload = {
       ...form,
       price: Number(form.price),
-      image: form.image.split(',').map((s) => s.trim()).filter(Boolean),
       sizes: form.sizes.split(',').map((s) => s.trim()).filter(Boolean)
     }
 
@@ -221,20 +258,82 @@ const AdminProducts = () => {
             </div>
 
             <div className="sm:col-span-2">
-              <FormField id="image" label="Images">
+              <span className="mb-1.5 block text-sm font-medium text-gray-700">Images</span>
+
+              {form.image.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-3">
+                  {form.image.map((src, index) => (
+                    <div key={`${src}-${index}`} className="group relative">
+                      <img
+                        src={imageUrl(src)}
+                        alt=""
+                        className="h-24 w-24 rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                      />
+                      {/* The first image is the one the shop grid shows, so
+                          it is worth saying which that is. */}
+                      {index === 0 && (
+                        <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                          Main
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        aria-label="Remove image"
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-500 shadow-sm transition-colors hover:border-red-300 hover:text-red-600"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900">
+                  {uploading ? 'Uploading…' : 'Upload images'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={uploading}
+                    onChange={(e) => {
+                      addImages([...e.target.files])
+                      // Clear it, or picking the same file twice in a row
+                      // fires no change event and looks broken.
+                      e.target.value = ''
+                    }}
+                    className="hidden"
+                  />
+                </label>
+
+                <span className="text-xs text-gray-400">or</span>
+
                 <input
-                  id="image"
-                  name="image"
-                  value={form.image}
-                  onChange={onChange}
-                  className={fieldClass}
-                  placeholder="/images/p_img1.webp, https://example.com/photo.jpg"
+                  value={urlDraft}
+                  onChange={(e) => setUrlDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addUrl()
+                    }
+                  }}
+                  placeholder="paste a URL or /images/p_img1.webp"
+                  className="min-w-0 flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition-colors hover:border-gray-400 focus:border-gray-900"
                 />
-                <p className="mt-1.5 text-xs text-gray-400">
-                  Comma separated. A path like <code>/images/p_img1.webp</code> is served by the API;
-                  a full https:// URL is used as-is. There is no upload yet.
-                </p>
-              </FormField>
+                <button
+                  type="button"
+                  onClick={addUrl}
+                  className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
+                >
+                  Add
+                </button>
+              </div>
+
+              <p className="mt-1.5 text-xs text-gray-400">
+                Files go straight to Cloudinary and never pass through the API. The
+                first image is the one shown in the shop.
+              </p>
             </div>
 
             <FormField id="sizes" label="Sizes">

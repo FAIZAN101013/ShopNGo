@@ -13,6 +13,7 @@ import productRouter from "./routes/productRoute.js";
 import userRouter from "./routes/userRoute.js";
 import orderRouter from "./routes/orderRoute.js";
 import cartRouter from "./routes/cartRoute.js";
+import uploadRouter from "./routes/uploadRoute.js";
 
 connectDB(); // connect to MongoDB
 verifyMailer(); // check the SMTP login now, not at the first signup
@@ -73,6 +74,7 @@ app.use("/api/products", productRouter); // this line is the main route for the 
 app.use("/api/user", userRouter); // accounts: register, verify, login, password reset
 app.use("/api/orders", orderRouter); // placing and reading your own orders
 app.use("/api/cart", cartRouter); // the cart, kept on the account not the browser
+app.use("/api/upload", uploadRouter); // signs an image upload so it can go straight to Cloudinary
 
 // this is the main route for the backend
 app.get("/", (req, res) => {

@@ -31,6 +31,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 - 🛡️ **Protected routes** — checkout, orders and profile need a valid token, enforced by middleware
 - 🧺 **Cart on the account** — follows you between devices; guests keep a local one
 - 🗂️ **Admin pages** — add, edit and remove products; move orders from confirmed to delivered
+- 🖼️ **Image uploads** — files go browser → Cloudinary directly, signed by the API
 
 ### Emails
 | When | What arrives |
@@ -151,6 +152,8 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `SMTP_HOST` · `SMTP_PORT` · `SMTP_USER` · `SMTP_PASS` | Mail server. For Gmail, `SMTP_PASS` must be an **App Password** |
 | `MAIL_FROM` | The From line, e.g. `ShopNGo <you@example.com>` |
 | `BREVO_API_KEY` | Sends over HTTPS instead of SMTP. Needed on hosts that block outbound SMTP |
+| `CLOUDINARY_CLOUD_NAME` · `CLOUDINARY_API_KEY` · `CLOUDINARY_API_SECRET` | Product image uploads. Without them the admin page asks for URLs instead |
+| `CLOUDINARY_FOLDER` | Where uploads land (default `shopngo`) |
 | `MAIL_DRY_RUN` | `1` prints emails to the terminal instead of sending them |
 
 **`frontend/.env`**
@@ -177,6 +180,7 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `POST` | `/api/user/reset-password` | — | Set a new password |
 | `GET` · `PUT` | `/api/user/profile` | ✅ | Read / update the signed-in account |
 | `GET` · `PUT` | `/api/cart` | ✅ | Read / replace the cart on your account |
+| `GET` | `/api/upload/signature` | 🛡️ | Permission to upload one image to Cloudinary |
 | `POST` | `/api/orders` | ✅ | Place an order |
 | `GET` | `/api/orders` | ✅ | Your order history |
 | `GET` | `/api/orders/:reference` | ✅ | One of your orders |
@@ -203,7 +207,7 @@ They need to sign out and back in afterwards, since the role is carried in the t
 ShopNGo/
 ├── backend/
 │   ├── server.js              # Front door: middleware, routes, error handling
-│   ├── config/                # db.js (Mongo), mailer.js (SMTP)
+│   ├── config/                # db.js (Mongo), mailer.js (email), cloudinary.js (uploads)
 │   ├── models/                # product, user, otp, order (cart lives on the user)
 │   ├── controllers/           # The work: product, user, cart, order
 │   ├── middleware/            # auth.js verifies the JWT, admin.js checks the role
@@ -301,7 +305,7 @@ A free Render service **sleeps after 15 minutes without traffic**, so the first 
 - [x] Cart tied to the account rather than the browser
 - [x] Admin pages for product and order management
 - [ ] Server-side Stripe / Razorpay checkout sessions
-- [ ] Uploading product images instead of pasting URLs
+- [x] Uploading product images to Cloudinary
 - [x] Deployment: frontend on Vercel, API on Render
 
 ---

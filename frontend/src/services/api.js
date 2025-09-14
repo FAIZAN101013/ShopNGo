@@ -168,3 +168,39 @@ export const adminFetchOrders = async () => {
 
 export const adminSetOrderStatus = (reference, status) =>
   request(`/api/orders/${reference}/status`, { method: 'PATCH', auth: true, body: { status } })
+
+/*
+  Upload one product image.
+
+  The file never touches our API. We ask it for a signature, then POST the
+  image straight to Cloudinary - so a 4MB photo does not travel twice and
+  does not sit in the memory of a small server that is also serving the shop.
+
+  Not through request(): this is a different host, and it takes FormData
+  rather than JSON, so setting Content-Type by hand would actually break it -
+  the browser has to add the multipart boundary itself.
+*/
+export const uploadProductImage = async (file) => {
+  const { upload } = await request('/api/upload/signature', { auth: true })
+
+  const form = new FormData()
+  form.append('file', file)
+  form.append('api_key', upload.apiKey)
+  form.append('timestamp', upload.timestamp)
+  form.append('folder', upload.folder)
+  form.append('signature', upload.signature)
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${upload.cloudName}/image/upload`,
+    { method: 'POST', body: form }
+  )
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || `Cloudinary refused the upload (${response.status})`)
+  }
+
+  // https, so imageUrl() passes it through untouched.
+  return data.secure_url
+}

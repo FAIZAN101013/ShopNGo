@@ -73,3 +73,14 @@ services:
         sync: false
       - key: MAIL_DRY_RUN
         value: "0"
+
+      # Product image uploads. The browser sends files straight to
+      # Cloudinary; this service only signs them, so the secret stays here.
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: shopngo
