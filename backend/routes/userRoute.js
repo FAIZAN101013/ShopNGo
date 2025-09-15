@@ -9,8 +9,11 @@ import {
   resetPassword,
   getProfile,
   updateProfile,
+  listStaff,
+  setUserRole,
 } from "../controllers/userController.js";
 import requireAuth from "../middleware/auth.js";
+import { requireOwner } from "../middleware/admin.js";
 
 const userRouter = express.Router();
 
@@ -30,5 +33,11 @@ userRouter.post("/reset-password", resetPassword);
 */
 userRouter.get("/profile", requireAuth, getProfile);
 userRouter.put("/profile", requireAuth, updateProfile);
+
+/*
+  Owner only: seeing who has the keys, and handing them out.
+*/
+userRouter.get("/staff", requireAuth, requireOwner, listStaff);
+userRouter.patch("/:id/role", requireAuth, requireOwner, setUserRole);
 
 export default userRouter;

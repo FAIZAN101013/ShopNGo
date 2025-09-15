@@ -28,6 +28,10 @@ const hash = (password) => bcrypt.hash(password, 10);
 
 const normaliseEmail = (email) => String(email || "").trim().toLowerCase();
 
+// Turn whatever someone typed into a search box into a literal string, so
+// that "a.b+c" matches "a.b+c" instead of being read as a pattern.
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // One code path for "the client sent us something unusable". 400 means the
 // request was wrong, which is different from 500 meaning we were wrong.
 const badRequest = (res, message) => res.status(400).json({ success: false, message });
@@ -295,7 +299,92 @@ const updateProfile = async (req, res) => {
   }
 };
 
+/* ---------- owner only ---------- */
+
+/*
+  Everyone who can get into the back office, plus anyone whose name or email
+  matches a search - so an owner can find the account they want to promote
+  without scrolling past every customer in the shop.
+*/
+const listStaff = async (req, res) => {
+  try {
+    const search = String(req.query.search || "").trim();
+
+    // Escaped before it becomes a regular expression. Plenty of real email
+    // addresses contain "+", and "a+b" as a pattern means something quite
+    // different from "a+b" as a string.
+    const safe = escapeRegex(search);
+
+    const filter = search
+      ? {
+          $or: [
+            { email: { $regex: safe, $options: "i" } },
+            { name: { $regex: safe, $options: "i" } },
+          ],
+        }
+      : // No search: just the people who already have the keys.
+        { role: { $in: ["admin", "owner"] } };
+
+    const users = await userModel.find(filter).sort({ role: 1, name: 1 }).limit(50);
+
+    res.json({ success: true, users: users.map(publicUser) });
+  } catch (error) {
+    console.error("list staff failed:", error);
+    res.status(500).json({ success: false, message: "Could not load the accounts" });
+  }
+};
+
+/*
+  Grant or take back admin.
+
+  Only "user" and "admin" can be set. There is no way to make another owner
+  through the API - a shop has one, and changing that should take somebody
+  with the database password and a moment's thought.
+*/
+const setUserRole = async (req, res) => {
+  try {
+    const role = String(req.body.role || "").toLowerCase();
+
+    if (!["user", "admin"].includes(role)) {
+      return badRequest(res, "Role must be either user or admin");
+    }
+
+    const target = await userModel.findById(req.params.id);
+    if (!target) return res.status(404).json({ success: false, message: "No such account" });
+
+    // The owner cannot demote themselves. Otherwise one wrong click leaves
+    // the shop with nobody who can appoint anybody.
+    if (target._id.equals(req.user._id)) {
+      return badRequest(res, "You cannot change your own role");
+    }
+
+    if (target.role === "owner") {
+      return badRequest(res, "The owner's role cannot be changed here");
+    }
+
+    // An account that has never confirmed its email is not a person we can
+    // be sure of, so it does not get the keys.
+    if (role === "admin" && !target.verified) {
+      return badRequest(res, "That account has not verified its email yet");
+    }
+
+    target.role = role;
+    await target.save();
+
+    res.json({
+      success: true,
+      message: role === "admin" ? `${target.name} is now an admin` : `${target.name} is no longer an admin`,
+      user: publicUser(target),
+    });
+  } catch (error) {
+    console.error("set role failed:", error);
+    res.status(500).json({ success: false, message: "Could not change that role" });
+  }
+};
+
 export {
+  listStaff,
+  setUserRole,
   registerUser,
   verifyEmail,
   resendCode,

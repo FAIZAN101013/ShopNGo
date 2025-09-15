@@ -8,17 +8,25 @@ import userModel from "../models/userModel.js";
 
   Run by hand, from a machine that already has the database password:
 
-    npm run make-admin you@example.com
+    npm run make-admin you@example.com          -> admin
+    npm run make-admin you@example.com owner    -> owner
 
-  There is deliberately no route that does this. An endpoint that grants
-  admin is an endpoint somebody will eventually find a way to call, and the
-  shop needs this roughly once ever.
+  An owner can appoint admins from the admin pages, so in practice this is
+  run once, for the first owner. There is deliberately no route that creates
+  an owner - that is the one thing which should always require the database
+  password and a moment's thought.
 */
 
 const email = String(process.argv[2] || "").trim().toLowerCase();
+const role = String(process.argv[3] || "admin").trim().toLowerCase();
 
 if (!email) {
-  console.error("Which account? Usage: npm run make-admin you@example.com");
+  console.error("Which account? Usage: npm run make-admin you@example.com [admin|owner]");
+  process.exit(1);
+}
+
+if (!["admin", "owner"].includes(role)) {
+  console.error(`Role must be admin or owner, not "${role}".`);
   process.exit(1);
 }
 
@@ -32,10 +40,10 @@ if (!user) {
   process.exit(1);
 }
 
-user.role = "admin";
+user.role = role;
 await user.save();
 
-console.log(`${user.name} <${user.email}> is now an admin.`);
-console.log("They need to sign out and back in - the role is read when the page loads.");
+console.log(`${user.name} <${user.email}> is now ${role === "owner" ? "the owner" : "an admin"}.`);
+console.log("They should reload the shop - the browser reads the role when the page loads.");
 
 await mongoose.disconnect();

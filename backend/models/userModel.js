@@ -33,12 +33,15 @@ const userSchema = new mongoose.Schema(
     /*
       Who is allowed to run the shop rather than just buy from it.
 
-      A field on the user, not a separate "admins" collection, because there
-      are two kinds of person and one of them is rare. It defaults to "user",
-      so the only way to become an admin is for somebody with database access
-      to say so - there is deliberately no route that grants it.
+        user   shops here
+        admin  runs the shop: products and orders
+        owner  all of that, plus deciding who the admins are
+
+      Only the owner can hand out or take back admin, and there is no route
+      at all that creates an owner - that takes the make-admin script, run by
+      somebody who already has the database password.
     */
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    role: { type: String, enum: ["user", "admin", "owner"], default: "user" },
 
     /*
       The cart, shaped exactly as the browser holds it:

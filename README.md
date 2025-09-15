@@ -30,7 +30,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 - 📦 **Orders** — stored per account, **priced by the server**, with a confirmation email
 - 🛡️ **Protected routes** — checkout, orders and profile need a valid token, enforced by middleware
 - 🧺 **Cart on the account** — follows you between devices; guests keep a local one
-- 🗂️ **Admin pages** — add, edit and remove products; move orders from confirmed to delivered
+- 🗂️ **Back office** at `/admin` — separate sign-in, not linked from the shop; orders, products and staff
 - 🖼️ **Image uploads** — files go browser → Cloudinary directly, signed by the API
 
 ### Emails
@@ -129,7 +129,7 @@ If the API is not running, the storefront says so rather than showing an empty s
 | `npm run server` | Start the API with nodemon (restarts on save) |
 | `npm start` | Start the API once |
 | `npm run seed` | Wipe and reload the product catalog |
-| `npm run make-admin <email>` | Promote an existing account to admin |
+| `npm run make-admin <email> [admin\|owner]` | Promote an existing account |
 
 ---
 
@@ -184,20 +184,29 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `POST` | `/api/orders` | ✅ | Place an order |
 | `GET` | `/api/orders` | ✅ | Your order history |
 | `GET` | `/api/orders/:reference` | ✅ | One of your orders |
+| `GET` | `/api/user/staff` | 👑 | List the owner and admins, or search all accounts |
+| `PATCH` | `/api/user/:id/role` | 👑 | Grant or take back admin |
 | `GET` | `/api/orders/all` | 🛡️ | Every order in the shop |
 | `PATCH` | `/api/orders/:reference/status` | 🛡️ | Move an order along |
 
-Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 🛡️ needs that token to belong to an admin.
+Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 🛡️ needs an admin or owner; 👑 needs the owner.
 
-### Making someone an admin
+### Roles
 
-There is deliberately no route for this — an endpoint that grants admin is one somebody will eventually find a way to call. Sign the account up normally, then from the `backend/` folder:
+| Role | Can |
+|---|---|
+| `user` | Shop |
+| `admin` | Manage products and orders |
+| `owner` | All of that, plus deciding who the admins are |
+
+The owner appoints admins from **/admin → Team**. There is no route that creates an *owner* — that would be the one endpoint worth attacking. It takes the script and the database password:
 
 ```bash
-npm run make-admin you@example.com
+cd backend
+npm run make-admin you@example.com owner   # the first owner, once
 ```
 
-They need to sign out and back in afterwards, since the role is carried in the token.
+The back office is at **/admin** with its own sign-in. It is deliberately not linked from the shop's account menu.
 
 ---
 
@@ -246,7 +255,7 @@ ShopNGo/
 | `/placeorder` | Checkout | ✅ |
 | `/orders` | Order history | ✅ |
 | `/profile` | Account details | ✅ |
-| `/admin` | Products and orders | 🛡️ admins |
+| `/admin` | Back office: orders, products, team | 🛡️ staff |
 | `/about` · `/contact` | Informational pages | |
 
 ---
