@@ -30,7 +30,11 @@ const AUTH_ROUTES = ['/login', '/register', '/verify-email', '/forgot-password']
 
 const App = () => {
   const { pathname } = useLocation()
-  const showChrome = !AUTH_ROUTES.includes(pathname)
+
+  // The back office gets no shop chrome either. It is a different job from
+  // shopping, and a header full of Collection and Contact links belongs to
+  // the other one.
+  const showChrome = !AUTH_ROUTES.includes(pathname) && !pathname.startsWith('/admin')
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">

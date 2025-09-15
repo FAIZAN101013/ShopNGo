@@ -169,6 +169,16 @@ export const adminFetchOrders = async () => {
 export const adminSetOrderStatus = (reference, status) =>
   request(`/api/orders/${reference}/status`, { method: 'PATCH', auth: true, body: { status } })
 
+// Owner only: who has the keys, and handing them out.
+export const adminFetchStaff = async (search = '') => {
+  const query = search ? `?search=${encodeURIComponent(search)}` : ''
+  const data = await request(`/api/user/staff${query}`, { auth: true })
+  return data.users || []
+}
+
+export const adminSetUserRole = (id, role) =>
+  request(`/api/user/${id}/role`, { method: 'PATCH', auth: true, body: { role } })
+
 /*
   Upload one product image.
 

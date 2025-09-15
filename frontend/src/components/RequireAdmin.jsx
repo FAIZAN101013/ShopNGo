@@ -1,21 +1,25 @@
 import React, { useContext } from 'react'
-import { Link, Navigate, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { AuthContext } from '../context/AuthContext'
+import AdminLogin from './AdminLogin'
 
 /*
   Like RequireAuth, but also checks the role.
 
-  Signed out gets sent to the login page. Signed in but not an admin gets
-  told so, rather than bounced to a login form they have already passed -
-  that would read as "your password is wrong" when the truth is different.
+  Signed out gets its own sign in screen rather than the shop's, because the
+  shop's offers to create an account, and creating an account is not how
+  anybody gets in here.
+
+  Signed in but not staff gets told so, rather than bounced to a login form
+  they have already passed - that would read as "your password is wrong"
+  when the truth is quite different.
 
   Again: this is politeness, not security. Every admin route on the server
   checks the role for itself.
 */
 const RequireAdmin = ({ children }) => {
   const { user, isLoggedIn, booting } = useContext(AuthContext)
-  const location = useLocation()
 
   if (booting) {
     return (
@@ -25,11 +29,9 @@ const RequireAdmin = ({ children }) => {
     )
   }
 
-  if (!isLoggedIn) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  }
+  if (!isLoggedIn) return <AdminLogin />
 
-  if (user.role !== 'admin') {
+  if (!['admin', 'owner'].includes(user.role)) {
     return (
       <div className="py-16">
         <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
@@ -40,7 +42,8 @@ const RequireAdmin = ({ children }) => {
           </div>
           <h1 className="prata-regular mt-5 text-2xl text-gray-900">Staff only</h1>
           <p className="mt-2 text-sm text-gray-500">
-            You are signed in as {user.email}, which is not an admin account.
+            You are signed in as {user.email}, which is not a staff account.
+            The shop owner can grant access.
           </p>
           <Link
             to="/"
