@@ -179,6 +179,20 @@ export const adminFetchStaff = async (search = '') => {
 export const adminSetUserRole = (id, role) =>
   request(`/api/user/${id}/role`, { method: 'PATCH', auth: true, body: { role } })
 
+export const adminInviteAdmin = (payload) =>
+  request('/api/user/invite-admin', { method: 'POST', auth: true, body: payload })
+
+/*
+  Claiming an invitation. Not an admin call despite living next to them - the
+  person doing it has no account to authenticate with yet, which is exactly
+  what the emailed code stands in for.
+*/
+export const acceptAdminInvite = async (payload) => {
+  const data = await request('/api/user/accept-invite', { method: 'POST', body: payload })
+  setToken(data.token)
+  return data
+}
+
 /*
   Upload one product image.
 
