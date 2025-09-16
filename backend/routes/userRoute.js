@@ -11,6 +11,8 @@ import {
   updateProfile,
   listStaff,
   setUserRole,
+  inviteAdmin,
+  acceptInvite,
 } from "../controllers/userController.js";
 import requireAuth from "../middleware/auth.js";
 import { requireOwner } from "../middleware/admin.js";
@@ -27,6 +29,10 @@ userRouter.post("/login", loginUser);
 userRouter.post("/forgot-password", forgotPassword);
 userRouter.post("/reset-password", resetPassword);
 
+// Public because the person accepting has no account to sign in with yet.
+// The emailed code is what authorises it.
+userRouter.post("/accept-invite", acceptInvite);
+
 /*
   Protected: requireAuth runs first and either fills in req.user or answers
   401 by itself, so these two never see a request without a valid token.
@@ -38,6 +44,7 @@ userRouter.put("/profile", requireAuth, updateProfile);
   Owner only: seeing who has the keys, and handing them out.
 */
 userRouter.get("/staff", requireAuth, requireOwner, listStaff);
+userRouter.post("/invite-admin", requireAuth, requireOwner, inviteAdmin);
 userRouter.patch("/:id/role", requireAuth, requireOwner, setUserRole);
 
 export default userRouter;

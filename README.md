@@ -37,6 +37,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 | When | What arrives |
 |---|---|
 | Sign up | 6-digit verification code |
+| Invited as an admin | Invitation code, or a note if they already had an account |
 | Email confirmed | Welcome message |
 | Forgot password | 6-digit reset code |
 | Order placed | Itemised confirmation, plus a copy to the shop owner |
@@ -186,6 +187,8 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `GET` | `/api/orders/:reference` | ✅ | One of your orders |
 | `GET` | `/api/user/staff` | 👑 | List the owner and admins, or search all accounts |
 | `PATCH` | `/api/user/:id/role` | 👑 | Grant or take back admin |
+| `POST` | `/api/user/invite-admin` | 👑 | Email someone an invitation to be an admin |
+| `POST` | `/api/user/accept-invite` | — | Claim an invitation with the code and a new password |
 | `GET` | `/api/orders/all` | 🛡️ | Every order in the shop |
 | `PATCH` | `/api/orders/:reference/status` | 🛡️ | Move an order along |
 
@@ -199,7 +202,7 @@ Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Beare
 | `admin` | Manage products and orders |
 | `owner` | All of that, plus deciding who the admins are |
 
-The owner appoints admins from **/admin → Team**. There is no route that creates an *owner* — that would be the one endpoint worth attacking. It takes the script and the database password:
+The owner appoints admins from **/admin → Team**, either by inviting an email address — they get a code and choose their own password — or by promoting somebody who already shops here. There is no route that creates an *owner* — that would be the one endpoint worth attacking. It takes the script and the database password:
 
 ```bash
 cd backend

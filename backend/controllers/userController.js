@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 import userModel from "../models/userModel.js";
 import { issueOtp, verifyOtp } from "../utils/otp.js";
@@ -8,6 +9,8 @@ import {
   verificationEmail,
   welcomeEmail,
   passwordResetEmail,
+  adminInviteEmail,
+  adminGrantedEmail,
 } from "../emails/templates.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -302,6 +305,146 @@ const updateProfile = async (req, res) => {
 /* ---------- owner only ---------- */
 
 /*
+  Invite someone to help run the shop.
+
+  Two quite different situations wear the same button:
+
+  - They already shop here. There is nothing to set up, so the role changes
+    and they get a note telling them so. Their password is untouched - we
+    could not read it if we wanted to.
+
+  - They have never been here. An account is created for them, holding a
+    random password nobody knows, and a code goes to their inbox. Until they
+    enter it there is no way in: not by us, not by them, not by anyone who
+    guessed the address was invited.
+
+  Either way the invitation goes to an inbox, which is what makes it an
+  invitation rather than an announcement.
+*/
+const inviteAdmin = async (req, res) => {
+  try {
+    const email = normaliseEmail(req.body.email);
+    const name = String(req.body.name || "").trim();
+
+    if (!EMAIL_PATTERN.test(email)) return badRequest(res, "That does not look like a valid email address");
+
+    const existing = await userModel.findOne({ email });
+
+    if (existing?.role === "owner") {
+      return badRequest(res, "That is the owner's account");
+    }
+
+    if (existing?.role === "admin" && existing.verified) {
+      return badRequest(res, `${existing.name} is already an admin`);
+    }
+
+    // Case one: a real, verified account. Just hand over the keys.
+    if (existing?.verified) {
+      existing.role = "admin";
+      await existing.save();
+
+      sendMailQuietly({
+        to: email,
+        ...adminGrantedEmail({ name: existing.name, invitedBy: req.user.name, shopUrl: shopUrl() }),
+      });
+
+      return res.json({
+        success: true,
+        promoted: true,
+        message: `${existing.name} already had an account and is now an admin`,
+        user: publicUser(existing),
+      });
+    }
+
+    /*
+      Case two: nobody, or somebody who never finished signing up.
+
+      The password is 32 random bytes that are hashed and then forgotten.
+      The field cannot be left empty - the model requires it - and a known
+      placeholder would be a password every invited account shared.
+    */
+    const unusablePassword = await hash(crypto.randomBytes(32).toString("hex"));
+
+    const user =
+      existing ||
+      new userModel({ name: name || email.split("@")[0], email, password: unusablePassword });
+
+    if (name) user.name = name;
+    user.role = "admin";
+    user.verified = false;
+    if (!existing) user.password = unusablePassword;
+
+    await user.save();
+
+    const { code, expiresInMinutes } = await issueOtp(email, "invite");
+
+    // Awaited: an invitation nobody receives is just a stranded account.
+    await sendMail({
+      to: email,
+      ...adminInviteEmail({ email, code, expiresInMinutes, invitedBy: req.user.name, shopUrl: shopUrl() }),
+    });
+
+    res.status(201).json({
+      success: true,
+      invited: true,
+      message: `Invitation sent to ${email}`,
+      user: publicUser(user),
+    });
+  } catch (error) {
+    console.error("invite admin failed:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.status ? error.message : "Could not send that invitation. Please try again.",
+    });
+  }
+};
+
+/*
+  Claim an invitation: the code from the email, plus a password of your own.
+
+  Public, because the person accepting has no account to authenticate with
+  yet. The code is what authorises it, which is why it is hashed, expires,
+  and allows five attempts like every other code here.
+*/
+const acceptInvite = async (req, res) => {
+  try {
+    const email = normaliseEmail(req.body.email);
+    const { code, password } = req.body;
+    const name = String(req.body.name || "").trim();
+
+    if (!email || !code || !password) return badRequest(res, "Enter the code and choose a password");
+    if (String(password).length < MIN_PASSWORD) {
+      return badRequest(res, `Password must be at least ${MIN_PASSWORD} characters`);
+    }
+
+    const user = await userModel.findOne({ email });
+
+    // One message for every way this can be wrong, so a stranger poking at
+    // it learns nothing about who was invited.
+    const invalid = () => badRequest(res, "That invitation is not valid. Ask the owner to send a new one.");
+
+    if (!user || user.verified || !["admin", "owner"].includes(user.role)) return invalid();
+
+    const result = await verifyOtp(email, "invite", code);
+    if (!result.ok) return badRequest(res, result.message);
+
+    if (name) user.name = name;
+    user.password = await hash(password);
+    // Holding the inbox proved the address, which is the same thing the
+    // signup code proves.
+    user.verified = true;
+    await user.save();
+
+    sendMailQuietly({ to: email, ...welcomeEmail({ name: user.name, shopUrl: shopUrl() }) });
+
+    res.json({ success: true, token: createToken(user), user: publicUser(user) });
+  } catch (error) {
+    console.error("accept invite failed:", error);
+    res.status(500).json({ success: false, message: "Could not accept that invitation. Please try again." });
+  }
+};
+
+/*
   Everyone who can get into the back office, plus anyone whose name or email
   matches a search - so an owner can find the account they want to promote
   without scrolling past every customer in the shop.
@@ -385,6 +528,8 @@ const setUserRole = async (req, res) => {
 export {
   listStaff,
   setUserRole,
+  inviteAdmin,
+  acceptInvite,
   registerUser,
   verifyEmail,
   resendCode,

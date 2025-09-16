@@ -18,10 +18,11 @@ const otpSchema = new mongoose.Schema(
 
     codeHash: { type: String, required: true },
 
-    // "verify" for a new account, "reset" for a forgotten password. Kept
-    // apart so a code emailed to confirm an address cannot be replayed to
-    // change the password on it.
-    purpose: { type: String, required: true, enum: ["verify", "reset"] },
+    // "verify" for a new account, "reset" for a forgotten password,
+    // "invite" for a staff invitation. Kept apart so a code emailed to
+    // confirm an address cannot be replayed to change the password on it -
+    // or, now, to claim an admin account.
+    purpose: { type: String, required: true, enum: ["verify", "reset", "invite"] },
 
     // Guessing 000000 to 999999 is cheap if you are allowed unlimited tries.
     attempts: { type: Number, default: 0 },
