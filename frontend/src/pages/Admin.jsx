@@ -7,17 +7,23 @@ import AdminProducts from '../components/AdminProducts'
 import AdminOrders from '../components/AdminOrders'
 import AdminTeam from '../components/AdminTeam'
 
-// Team is the owner's tab. An admin never sees it, and the endpoints behind
-// it refuse them anyway.
+/*
+  Which tabs each job gets. A manager handles orders; the catalogue is an
+  admin's job and the staff list is the owner's.
+
+  The tabs are hidden rather than disabled, because a disabled tab is an
+  invitation to wonder what you are missing. The endpoints behind each one
+  refuse the wrong role regardless.
+*/
 const TABS = [
-  { id: 'orders', label: 'Orders', ownerOnly: false },
-  { id: 'products', label: 'Products', ownerOnly: false },
-  { id: 'team', label: 'Team', ownerOnly: true }
+  { id: 'orders', label: 'Orders', roles: ['manager', 'admin', 'owner'] },
+  { id: 'products', label: 'Products', roles: ['admin', 'owner'] },
+  { id: 'team', label: 'Team', roles: ['owner'] }
 ]
 
 const Admin = () => {
   const { user, logout } = useContext(AuthContext)
-  const tabs = TABS.filter((t) => !t.ownerOnly || user.role === 'owner')
+  const tabs = TABS.filter((t) => t.roles.includes(user.role))
 
   // The tab lives in the URL rather than in state, so a reload keeps you
   // where you were and the two panels can be linked to directly.

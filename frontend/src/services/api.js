@@ -179,7 +179,8 @@ export const adminFetchStaff = async (search = '') => {
 export const adminSetUserRole = (id, role) =>
   request(`/api/user/${id}/role`, { method: 'PATCH', auth: true, body: { role } })
 
-export const adminInviteAdmin = (payload) =>
+// Takes one address or twenty, and the role they are being invited into.
+export const adminInviteStaff = (payload) =>
   request('/api/user/invite-admin', { method: 'POST', auth: true, body: payload })
 
 /*

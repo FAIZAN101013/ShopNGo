@@ -31,7 +31,7 @@ const RequireAdmin = ({ children }) => {
 
   if (!isLoggedIn) return <AdminLogin />
 
-  if (!['admin', 'owner'].includes(user.role)) {
+  if (!['manager', 'admin', 'owner'].includes(user.role)) {
     return (
       <div className="py-16">
         <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
