@@ -33,15 +33,20 @@ const userSchema = new mongoose.Schema(
     /*
       Who is allowed to run the shop rather than just buy from it.
 
-        user   shops here
-        admin  runs the shop: products and orders
-        owner  all of that, plus deciding who the admins are
+        user     shops here
+        manager  handles orders: reads them, moves them along
+        admin    all of that, plus adding and editing products
+        owner    all of that, plus deciding who the staff are
 
-      Only the owner can hand out or take back admin, and there is no route
+      Deliberately a ladder rather than a set of checkboxes. Real shops have
+      a handful of jobs, not a permissions matrix, and every rung here is one
+      somebody could describe out loud.
+
+      Only the owner can hand out or take back a role, and there is no route
       at all that creates an owner - that takes the make-admin script, run by
       somebody who already has the database password.
     */
-    role: { type: String, enum: ["user", "admin", "owner"], default: "user" },
+    role: { type: String, enum: ["user", "manager", "admin", "owner"], default: "user" },
 
     /*
       The cart, shaped exactly as the browser holds it:

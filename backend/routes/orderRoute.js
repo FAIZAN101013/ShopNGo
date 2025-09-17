@@ -8,7 +8,7 @@ import {
   updateOrderStatus,
 } from "../controllers/orderController.js";
 import requireAuth from "../middleware/auth.js";
-import requireAdmin from "../middleware/admin.js";
+import { requireStaff } from "../middleware/admin.js";
 
 const orderRouter = express.Router();
 
@@ -28,8 +28,8 @@ orderRouter.get("/", listMyOrders);
   matches, and "/:reference" would happily match the word "all" and go
   looking for an order with that reference.
 */
-orderRouter.get("/all", requireAdmin, listAllOrders);
-orderRouter.patch("/:reference/status", requireAdmin, updateOrderStatus);
+orderRouter.get("/all", requireStaff, listAllOrders);
+orderRouter.patch("/:reference/status", requireStaff, updateOrderStatus);
 
 orderRouter.get("/:reference", getMyOrder);
 

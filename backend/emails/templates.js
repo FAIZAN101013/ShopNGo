@@ -85,11 +85,18 @@ We will never ask you for this code by phone, chat or reply.`,
   created before this is sent, but it cannot be signed into until the person
   holding the inbox sets a password.
 */
-const adminInviteEmail = ({ email, code, expiresInMinutes, invitedBy, shopUrl }) => ({
+// What each job actually involves, in a sentence, so the invitation says
+// what is being asked of somebody rather than just naming a role.
+const ROLE_DUTIES = {
+  manager: "handle customer orders - see them come in and move them from packing to delivered",
+  admin: "manage the catalogue and handle customer orders",
+};
+
+const adminInviteEmail = ({ email, code, expiresInMinutes, role = "admin", invitedBy, shopUrl }) => ({
   subject: `You have been invited to help run ShopNGo`,
   html: layout(
-    "You have been invited as an admin",
-    p(`${invitedBy} has invited you to manage products and orders at ShopNGo.`) +
+    `You have been invited as ${role === "manager" ? "a manager" : "an admin"}`,
+    p(`${invitedBy} has invited you to ${ROLE_DUTIES[role] || ROLE_DUTIES.admin} at ShopNGo.`) +
       p("Open the back office, choose <strong>I have an invite</strong>, and enter this code to set your password:") +
       codeBlock(code) +
       `<div style="margin:26px 0 8px;">
@@ -97,7 +104,7 @@ const adminInviteEmail = ({ email, code, expiresInMinutes, invitedBy, shopUrl })
        </div>` +
       p(`The code expires in ${expiresInMinutes} minutes. If you were not expecting this, ignore it - the account cannot be used until someone enters the code.`)
   ),
-  text: `${invitedBy} has invited you to help run ShopNGo as an admin.
+  text: `${invitedBy} has invited you to help run ShopNGo as ${role === "manager" ? "a manager" : "an admin"}.
 
 Go to ${shopUrl}/admin, choose "I have an invite", and enter this code with the
 email ${email} to set your password:
@@ -110,17 +117,17 @@ it - the account cannot be used until someone enters the code.`,
 
 // Sent instead of an invite when the person already shops here: there is
 // nothing for them to set up, so it is a notification rather than a task.
-const adminGrantedEmail = ({ name, invitedBy, shopUrl }) => ({
-  subject: "You now have admin access to ShopNGo",
+const adminGrantedEmail = ({ name, role = "admin", invitedBy, shopUrl }) => ({
+  subject: "You now have back office access to ShopNGo",
   html: layout(
-    `You are now an admin, ${name}`,
+    `You are now ${role === "manager" ? "a manager" : "an admin"}, ${name}`,
     p(`${invitedBy} has given your existing account access to the back office.`) +
-      p("Sign in with the password you already use. You can manage products and orders; the shop owner keeps control of who else gets access.") +
+      p(`Sign in with the password you already use. You can ${ROLE_DUTIES[role] || ROLE_DUTIES.admin}; the shop owner keeps control of who else gets access.`) +
       `<div style="margin:26px 0 8px;">
          <a href="${shopUrl}/admin" style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-size:14px;font-weight:600;">Open the back office</a>
        </div>`
   ),
-  text: `${invitedBy} has given your ShopNGo account admin access.
+  text: `${invitedBy} has given your ShopNGo account ${role === "manager" ? "manager" : "admin"} access.
 
 Sign in at ${shopUrl}/admin with the password you already use.`,
 });

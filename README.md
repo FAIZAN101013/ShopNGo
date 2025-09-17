@@ -37,7 +37,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 | When | What arrives |
 |---|---|
 | Sign up | 6-digit verification code |
-| Invited as an admin | Invitation code, or a note if they already had an account |
+| Invited as staff | Invitation code, or a note if they already had an account |
 | Email confirmed | Welcome message |
 | Forgot password | 6-digit reset code |
 | Order placed | Itemised confirmation, plus a copy to the shop owner |
@@ -187,22 +187,25 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `GET` | `/api/orders/:reference` | ✅ | One of your orders |
 | `GET` | `/api/user/staff` | 👑 | List the owner and admins, or search all accounts |
 | `PATCH` | `/api/user/:id/role` | 👑 | Grant or take back admin |
-| `POST` | `/api/user/invite-admin` | 👑 | Email someone an invitation to be an admin |
+| `POST` | `/api/user/invite-admin` | 👑 | Invite one or many addresses as manager or admin |
 | `POST` | `/api/user/accept-invite` | — | Claim an invitation with the code and a new password |
-| `GET` | `/api/orders/all` | 🛡️ | Every order in the shop |
-| `PATCH` | `/api/orders/:reference/status` | 🛡️ | Move an order along |
+| `GET` | `/api/orders/all` | 👔 | Every order in the shop |
+| `PATCH` | `/api/orders/:reference/status` | 👔 | Move an order along |
 
-Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 🛡️ needs an admin or owner; 👑 needs the owner.
+Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 👔 needs any staff role; 🛡️ needs an admin or owner; 👑 needs the owner.
 
 ### Roles
 
 | Role | Can |
 |---|---|
 | `user` | Shop |
-| `admin` | Manage products and orders |
-| `owner` | All of that, plus deciding who the admins are |
+| `manager` | Handle orders: read them, move them along |
+| `admin` | All of that, plus adding and editing products |
+| `owner` | All of that, plus deciding who the staff are |
 
-The owner appoints admins from **/admin → Team**, either by inviting an email address — they get a code and choose their own password — or by promoting somebody who already shops here. There is no route that creates an *owner* — that would be the one endpoint worth attacking. It takes the script and the database password:
+The owner appoints staff from **/admin → Team**: paste up to twenty email addresses, pick manager or admin, and each person gets a code and chooses their own password. Anyone who already shops here is simply given the role, with their password untouched.
+
+Access does not expire — the *invitation* does, after 10 minutes. The owner revokes it by hand. There is no route that creates an *owner* — that would be the one endpoint worth attacking. It takes the script and the database password:
 
 ```bash
 cd backend

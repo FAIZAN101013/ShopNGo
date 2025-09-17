@@ -11,7 +11,7 @@ import {
   updateProfile,
   listStaff,
   setUserRole,
-  inviteAdmin,
+  inviteStaff,
   acceptInvite,
 } from "../controllers/userController.js";
 import requireAuth from "../middleware/auth.js";
@@ -44,7 +44,7 @@ userRouter.put("/profile", requireAuth, updateProfile);
   Owner only: seeing who has the keys, and handing them out.
 */
 userRouter.get("/staff", requireAuth, requireOwner, listStaff);
-userRouter.post("/invite-admin", requireAuth, requireOwner, inviteAdmin);
+userRouter.post("/invite-admin", requireAuth, requireOwner, inviteStaff);
 userRouter.patch("/:id/role", requireAuth, requireOwner, setUserRole);
 
 export default userRouter;

@@ -39,6 +39,10 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$
 // request was wrong, which is different from 500 meaning we were wrong.
 const badRequest = (res, message) => res.status(400).json({ success: false, message });
 
+// "an admin" but "a manager". A small thing, and the alternative is every
+// message reading like a form letter.
+const aOrAn = (role) => (/^[aeiou]/i.test(role) ? `an ${role}` : `a ${role}`);
+
 /*
   Create an account.
 
@@ -321,77 +325,113 @@ const updateProfile = async (req, res) => {
   Either way the invitation goes to an inbox, which is what makes it an
   invitation rather than an announcement.
 */
-const inviteAdmin = async (req, res) => {
+// One address. Returns a line describing what happened rather than throwing,
+// so inviting six people does not stop at the first one that is already staff.
+const inviteOne = async ({ email, name, role, invitedBy }) => {
+  if (!EMAIL_PATTERN.test(email)) {
+    return { email, ok: false, message: "Not a valid email address" };
+  }
+
+  const existing = await userModel.findOne({ email });
+
+  if (existing?.role === "owner") {
+    return { email, ok: false, message: "That is the owner's account" };
+  }
+
+  if (existing?.role === role && existing.verified) {
+    return { email, ok: false, message: `${existing.name} is already ${aOrAn(role)}` };
+  }
+
+  // Case one: a real, verified account. Just hand over the keys.
+  if (existing?.verified) {
+    existing.role = role;
+    await existing.save();
+
+    sendMailQuietly({
+      to: email,
+      ...adminGrantedEmail({ name: existing.name, role, invitedBy, shopUrl: shopUrl() }),
+    });
+
+    return {
+      email,
+      ok: true,
+      promoted: true,
+      message: `${existing.name} already had an account and is now ${aOrAn(role)}`,
+    };
+  }
+
+  /*
+    Case two: nobody, or somebody who never finished signing up.
+
+    The password is 32 random bytes that are hashed and then forgotten. The
+    field cannot be left empty - the model requires it - and a known
+    placeholder would be one password every invited account shared.
+  */
+  const unusablePassword = await hash(crypto.randomBytes(32).toString("hex"));
+
+  const user =
+    existing || new userModel({ name: name || email.split("@")[0], email, password: unusablePassword });
+
+  if (name) user.name = name;
+  user.role = role;
+  user.verified = false;
+  if (!existing) user.password = unusablePassword;
+
+  await user.save();
+
   try {
-    const email = normaliseEmail(req.body.email);
+    const { code, expiresInMinutes } = await issueOtp(email, "invite");
+
+    await sendMail({
+      to: email,
+      ...adminInviteEmail({ email, code, expiresInMinutes, role, invitedBy, shopUrl: shopUrl() }),
+    });
+  } catch (error) {
+    // The account exists but nobody was told. Say so plainly - "invited"
+    // when no email went out is the kind of lie that wastes an afternoon.
+    return { email, ok: false, message: `Account made, but the email failed: ${error.message}` };
+  }
+
+  return { email, ok: true, invited: true, message: `Invitation sent to ${email}` };
+};
+
+const inviteStaff = async (req, res) => {
+  try {
+    const role = String(req.body.role || "admin").toLowerCase();
     const name = String(req.body.name || "").trim();
 
-    if (!EMAIL_PATTERN.test(email)) return badRequest(res, "That does not look like a valid email address");
-
-    const existing = await userModel.findOne({ email });
-
-    if (existing?.role === "owner") {
-      return badRequest(res, "That is the owner's account");
-    }
-
-    if (existing?.role === "admin" && existing.verified) {
-      return badRequest(res, `${existing.name} is already an admin`);
-    }
-
-    // Case one: a real, verified account. Just hand over the keys.
-    if (existing?.verified) {
-      existing.role = "admin";
-      await existing.save();
-
-      sendMailQuietly({
-        to: email,
-        ...adminGrantedEmail({ name: existing.name, invitedBy: req.user.name, shopUrl: shopUrl() }),
-      });
-
-      return res.json({
-        success: true,
-        promoted: true,
-        message: `${existing.name} already had an account and is now an admin`,
-        user: publicUser(existing),
-      });
+    if (!["manager", "admin"].includes(role)) {
+      return badRequest(res, "Role must be either manager or admin");
     }
 
     /*
-      Case two: nobody, or somebody who never finished signing up.
-
-      The password is 32 random bytes that are hashed and then forgotten.
-      The field cannot be left empty - the model requires it - and a known
-      placeholder would be a password every invited account shared.
+      Accepts one address or many. People paste a list out of a message or a
+      spreadsheet, so commas, semicolons, spaces and newlines all separate.
     */
-    const unusablePassword = await hash(crypto.randomBytes(32).toString("hex"));
+    const raw = Array.isArray(req.body.emails) ? req.body.emails.join(",") : String(req.body.emails || req.body.email || "");
+    const emails = [...new Set(raw.split(/[\s,;]+/).map(normaliseEmail).filter(Boolean))];
 
-    const user =
-      existing ||
-      new userModel({ name: name || email.split("@")[0], email, password: unusablePassword });
+    if (emails.length === 0) return badRequest(res, "Enter at least one email address");
+    if (emails.length > 20) return badRequest(res, "Twenty invitations at a time is the limit");
 
-    if (name) user.name = name;
-    user.role = "admin";
-    user.verified = false;
-    if (!existing) user.password = unusablePassword;
+    // A name only makes sense for a single invitation.
+    const results = [];
+    for (const email of emails) {
+      results.push(await inviteOne({ email, name: emails.length === 1 ? name : "", role, invitedBy: req.user.name }));
+    }
 
-    await user.save();
+    const sent = results.filter((r) => r.ok).length;
 
-    const { code, expiresInMinutes } = await issueOtp(email, "invite");
-
-    // Awaited: an invitation nobody receives is just a stranded account.
-    await sendMail({
-      to: email,
-      ...adminInviteEmail({ email, code, expiresInMinutes, invitedBy: req.user.name, shopUrl: shopUrl() }),
-    });
-
-    res.status(201).json({
-      success: true,
-      invited: true,
-      message: `Invitation sent to ${email}`,
-      user: publicUser(user),
+    res.status(sent > 0 ? 201 : 400).json({
+      success: sent > 0,
+      results,
+      message:
+        results.length === 1
+          ? results[0].message
+          : `${sent} of ${results.length} invitations sent`,
     });
   } catch (error) {
-    console.error("invite admin failed:", error);
+    console.error("invite staff failed:", error);
     res.status(error.status || 500).json({
       success: false,
       message: error.status ? error.message : "Could not send that invitation. Please try again.",
@@ -423,7 +463,7 @@ const acceptInvite = async (req, res) => {
     // it learns nothing about who was invited.
     const invalid = () => badRequest(res, "That invitation is not valid. Ask the owner to send a new one.");
 
-    if (!user || user.verified || !["admin", "owner"].includes(user.role)) return invalid();
+    if (!user || user.verified || !["manager", "admin", "owner"].includes(user.role)) return invalid();
 
     const result = await verifyOtp(email, "invite", code);
     if (!result.ok) return badRequest(res, result.message);
@@ -466,7 +506,7 @@ const listStaff = async (req, res) => {
           ],
         }
       : // No search: just the people who already have the keys.
-        { role: { $in: ["admin", "owner"] } };
+        { role: { $in: ["manager", "admin", "owner"] } };
 
     const users = await userModel.find(filter).sort({ role: 1, name: 1 }).limit(50);
 
@@ -488,8 +528,8 @@ const setUserRole = async (req, res) => {
   try {
     const role = String(req.body.role || "").toLowerCase();
 
-    if (!["user", "admin"].includes(role)) {
-      return badRequest(res, "Role must be either user or admin");
+    if (!["user", "manager", "admin"].includes(role)) {
+      return badRequest(res, "Role must be user, manager or admin");
     }
 
     const target = await userModel.findById(req.params.id);
@@ -507,7 +547,7 @@ const setUserRole = async (req, res) => {
 
     // An account that has never confirmed its email is not a person we can
     // be sure of, so it does not get the keys.
-    if (role === "admin" && !target.verified) {
+    if (role !== "user" && !target.verified) {
       return badRequest(res, "That account has not verified its email yet");
     }
 
@@ -516,7 +556,10 @@ const setUserRole = async (req, res) => {
 
     res.json({
       success: true,
-      message: role === "admin" ? `${target.name} is now an admin` : `${target.name} is no longer an admin`,
+      message:
+        role === "user"
+          ? `${target.name} no longer works here`
+          : `${target.name} is now ${aOrAn(role)}`,
       user: publicUser(target),
     });
   } catch (error) {
@@ -528,7 +571,7 @@ const setUserRole = async (req, res) => {
 export {
   listStaff,
   setUserRole,
-  inviteAdmin,
+  inviteStaff,
   acceptInvite,
   registerUser,
   verifyEmail,
