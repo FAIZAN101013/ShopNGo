@@ -60,6 +60,27 @@ const codeBlock = (code) => `
     <div style="font-size:32px;letter-spacing:10px;font-weight:700;font-family:Consolas,Menlo,monospace;">${code}</div>
   </div>`;
 
+/*
+  A button, plus the same address written out underneath as plain text.
+
+  Sending services rewrite every href to point at their own click-tracking
+  domain, so the button no longer goes where it says it goes. When that
+  domain is slow, blocked by an ad blocker, or filtered by an ISP - all
+  common - the button dies and takes the email's usefulness with it.
+
+  The typed-out address is not a link, so there is nothing to rewrite. It is
+  ugly and it always works, which is the right trade for an email whose
+  whole job is to get somebody somewhere.
+*/
+const buttonWithUrl = (href, text) => `
+  <div style="margin:26px 0 8px;">
+    <a href="${href}" style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-size:14px;font-weight:600;">${text}</a>
+  </div>
+  <p style="margin:12px 0 0;font-size:12px;color:${MUTED};line-height:1.6;">
+    If that button does not work, type this into your browser:<br>
+    <span style="color:${BRAND};font-family:Consolas,Menlo,monospace;">${href}</span>
+  </p>`;
+
 const verificationEmail = ({ name, code, expiresInMinutes }) => ({
   subject: `${code} is your ShopNGo verification code`,
   html: layout(
@@ -99,9 +120,7 @@ const adminInviteEmail = ({ email, code, expiresInMinutes, role = "admin", invit
     p(`${invitedBy} has invited you to ${ROLE_DUTIES[role] || ROLE_DUTIES.admin} at ShopNGo.`) +
       p("Open the back office, choose <strong>I have an invite</strong>, and enter this code to set your password:") +
       codeBlock(code) +
-      `<div style="margin:26px 0 8px;">
-         <a href="${shopUrl}/admin" style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-size:14px;font-weight:600;">Open the back office</a>
-       </div>` +
+      buttonWithUrl(`${shopUrl}/admin`, "Open the back office") +
       p(`The code expires in ${expiresInMinutes} minutes. If you were not expecting this, ignore it - the account cannot be used until someone enters the code.`)
   ),
   text: `${invitedBy} has invited you to help run ShopNGo as ${role === "manager" ? "a manager" : "an admin"}.
@@ -123,9 +142,7 @@ const adminGrantedEmail = ({ name, role = "admin", invitedBy, shopUrl }) => ({
     `You are now ${role === "manager" ? "a manager" : "an admin"}, ${name}`,
     p(`${invitedBy} has given your existing account access to the back office.`) +
       p(`Sign in with the password you already use. You can ${ROLE_DUTIES[role] || ROLE_DUTIES.admin}; the shop owner keeps control of who else gets access.`) +
-      `<div style="margin:26px 0 8px;">
-         <a href="${shopUrl}/admin" style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-size:14px;font-weight:600;">Open the back office</a>
-       </div>`
+      buttonWithUrl(`${shopUrl}/admin`, "Open the back office")
   ),
   text: `${invitedBy} has given your ShopNGo account ${role === "manager" ? "manager" : "admin"} access.
 
@@ -140,9 +157,7 @@ const welcomeEmail = ({ name, shopUrl }) => ({
       p(
         "From here you can keep a cart between visits, check out without retyping your details, and follow every order from placed to delivered."
       ) +
-      `<div style="margin:26px 0 8px;">
-         <a href="${shopUrl}/collection" style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-size:14px;font-weight:600;">Start shopping</a>
-       </div>`
+      buttonWithUrl(`${shopUrl}/collection`, "Start shopping")
   ),
   text: `You are in, ${name}.
 
@@ -215,9 +230,7 @@ const orderConfirmationEmail = ({ name, order, shopUrl }) => {
              <span style="color:${MUTED};">${s.phone}</span>
            </div>
          </div>` +
-        `<div style="margin:26px 0 8px;">
-           <a href="${shopUrl}/orders" style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-size:14px;font-weight:600;">View your order</a>
-         </div>` +
+        buttonWithUrl(`${shopUrl}/orders`, "View your order") +
         p(`Paying by ${order.paymentMethod === "COD" ? "cash on delivery" : order.paymentMethod}.`)
     ),
     text: `Hi ${name},
