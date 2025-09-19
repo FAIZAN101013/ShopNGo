@@ -734,7 +734,195 @@ which is the only thing either of them should tell you.
 
 ---
 
-## 14. What I have built so far
+## 14. Two carts, one person
+
+The cart used to live in `localStorage`. That means it lived on **one
+machine** and belonged to **nobody**: add something on my phone and it was
+not on my laptop, clear my browser data and it was gone.
+
+So the cart moved onto the account. But that creates a problem that did not
+exist before — signing in is now a moment where **two carts meet**.
+
+```
+   GUEST CART (this browser)        ACCOUNT CART (from last week)
+   jeans  M  x1                     jeans  M  x2
+   shirt  L  x1                     hat    S  x1
+              \                    /
+               \                  /
+                v                v
+              WHICH ONE SURVIVES?
+```
+
+Three answers, and only one is right:
+
+| Choice | What goes wrong |
+| --- | --- |
+| Account wins | The three things I just added vanish as I sign in |
+| Guest wins | Last week's cart is silently deleted |
+| **Merge them** | Nothing is lost |
+
+So: merge. Then the follow-up question — jeans M is in **both**, at 1 and at
+2. Add them, or take the larger?
+
+**Take the larger.** Adding looks generous until the same cart syncs twice
+and somebody buys four of something they picked once. Nobody ever complains
+that their cart held the right number of things.
+
+```js
+merged[productId][size] = Math.max(server[size] || 0, local[size]);
+```
+
+### The bug I nearly wrote
+
+The push effect had to wait for the pull:
+
+```
+WRONG                              RIGHT
+sign in                            sign in
+cart state is still {}             fetch the account cart first
+push {} to the server              merge, THEN start pushing
+last week's cart: gone
+```
+
+That is what `accountCartReady` is for. Without it, the empty first render
+overwrites a real cart with nothing, and the customer never knows why.
+
+### Guests still get a local cart
+
+Deliberately. A shop that demands a login before it will hold a t-shirt for
+you is a shop people leave.
+
+---
+
+## 15. Roles — a ladder, not a checklist
+
+There are four kinds of person, and each one can do everything the one below
+can, plus a bit more:
+
+```
+   user      shops
+     |
+   manager   + reads orders, moves them along
+     |
+   admin     + adds and edits products
+     |
+   owner     + decides who the staff are
+```
+
+I could have built a permissions matrix — a checkbox per feature per person.
+I did not, because real shops have **jobs**, not matrices. Every rung above
+is something you could say out loud to someone: "you handle orders".
+
+### Three gates, not one
+
+```js
+requireStaff   manager, admin, owner   -> the order routes
+requireAdmin   admin, owner            -> the product routes
+requireOwner   owner                   -> handing out roles
+```
+
+Separate on purpose. If `requireAdmin` also covered appointing staff, any
+admin could quietly promote a friend — or demote me and take the shop.
+
+### The thing with no route
+
+**Nothing can create an owner.** Not a form, not an endpoint, not an owner.
+It takes `npm run make-admin email owner`, which needs the database password.
+
+An endpoint that grants the highest privilege is the single most attractive
+thing in the codebase to attack. The safest endpoint is the one that does not
+exist.
+
+Two smaller versions of the same idea:
+
+- The owner cannot demote **themselves** — one wrong click would otherwise
+  leave the shop with nobody who can appoint anybody.
+- An unverified account cannot be made staff. An address nobody has confirmed
+  is not a person I can be sure of.
+
+### Inviting, and the account with no password
+
+An invitation creates the account **before** the person accepts. So what
+password does it have?
+
+```js
+const unusablePassword = await hash(crypto.randomBytes(32).toString("hex"));
+```
+
+32 random bytes, hashed, then thrown away. Nobody knows it — not them, not
+me, not anyone who guessed the address got invited. The account exists and
+**cannot be opened**, until the code from the inbox is exchanged for a
+password they choose.
+
+A fixed placeholder like `"invited"` would have been one password shared by
+every invited account in the shop. That is the version of this that ends up
+in a news story.
+
+---
+
+## 16. What deployment actually broke
+
+Nothing here was a bug in the code. Every one was the code meeting the real
+world for the first time.
+
+### The site worked, then 404'd on refresh
+
+```
+   CLICKING a link          REFRESHING the page
+   React Router swaps       browser ASKS VERCEL for /collection
+   the page. No request     Vercel looks for that file, finds nothing
+   ever leaves.             its own 404. React never starts.
+```
+
+React Router routes **inside the browser**. Vercel has one HTML file, not
+twelve. Fix: rewrite every path to `index.html` and let the router sort it
+out.
+
+```json
+{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
+```
+
+### The frontend kept calling localhost
+
+`VITE_API_URL` is substituted when the site is **built**, not when it loads.
+Adding the variable changed nothing until I rebuilt — the old bundle had
+`http://localhost:4000` compiled into it.
+
+### Email timed out for 90 seconds
+
+```
+connect ENETUNREACH 2404:6800:4003:c05::6d:465
+```
+
+That is an IPv6 address. `smtp.gmail.com` publishes both an A and an AAAA
+record, Node picked the IPv6 one, and the host has no IPv6 route out.
+`family: 4` forced IPv4 — and then it still timed out, because **Render's
+free tier blocks outbound SMTP entirely**. Ports 25, 465 and 587 are shut.
+
+No transport setting fixes a closed port. Email had to leave over **443**
+like any other web request, through an HTTP email API. Because everything
+went through `config/mailer.js`, that was one file changed and nothing else.
+
+**That is the lesson of the whole file:** the boring wrapper I wrote around
+email in Lesson 12, that felt like extra work at the time, is why swapping
+providers took an afternoon instead of a week.
+
+### The API refused my own site
+
+CORS was set to one exact domain. Vercel gives every branch and preview build
+its own hostname, so previews were refused. An entry may now start with `*`
+to match a tail — but never a bare `*.vercel.app`, which would let anybody's
+Vercel site call my API.
+
+### The button in the email went nowhere
+
+The sending service rewrites every `href` to its own click-tracking domain,
+and that domain is blocked on plenty of connections. Every email now prints
+its destination underneath as plain text, which nothing can rewrite.
+
+---
+
+## 17. What I have built so far
 
 ```
 [x] Express server running on port 4000
@@ -745,31 +933,42 @@ which is the only thing either of them should tell you.
 [x] Accounts: bcrypt passwords, emailed verification codes, JWT sessions
 [x] Password reset by email, which also signs out every old token
 [x] Orders stored per account, priced by the server, receipt emailed
+[x] Cart kept on the account, guest cart merged in on sign in
+[x] Four roles: user, manager, admin, owner
+[x] Back office at /admin with its own sign in, invitations by email
+[x] Product image uploads straight to Cloudinary
+[x] Deployed: Vercel + Render + Atlas + Brevo
 ```
 
-Every endpoint:
+Every endpoint, and who gets in:
 
 ```
-        PUBLIC                              NEEDS A TOKEN
-GET    /api/products                 GET  /api/user/profile
-POST   /api/products                 PUT  /api/user/profile
-POST   /api/user/register            POST /api/orders
-POST   /api/user/verify              GET  /api/orders
-POST   /api/user/resend-code         GET  /api/orders/:reference
-POST   /api/user/login
-POST   /api/user/forgot-password
-POST   /api/user/reset-password
+ANYONE                         SIGNED IN         STAFF        ADMIN        OWNER
+GET  /api/products             GET  /user/profile             POST   /products
+POST /user/register            PUT  /user/profile             PUT    /products/:id
+POST /user/verify              GET  /api/cart                 DELETE /products/:id
+POST /user/resend-code         PUT  /api/cart                 GET    /upload/signature
+POST /user/login               POST /api/orders
+POST /user/forgot-password     GET  /api/orders   GET   /orders/all
+POST /user/reset-password      GET  /orders/:ref  PATCH /orders/:ref/status
+POST /user/accept-invite                                                   GET  /user/staff
+GET  /health                                                               POST /user/invite-admin
+                                                                           PATCH /user/:id/role
 ```
 
 Working proof:
 
 ```
-register            {"success":true,"requiresVerification":true}
-verify (wrong)      {"success":false,"message":"That code is not right. 4 tries left."}
-verify (right)      {"success":true,"token":"eyJhbGci..."}
-/api/orders no token{"success":false,"message":"Please sign in to continue"}
-order sent price 0.01 on a $100 item -> charged $100
-reset password      -> the old token is instantly refused
+register              {"success":true,"requiresVerification":true}
+verify (wrong code)   "That code is not right. 4 tries left."
+verify (right code)   {"success":true,"token":"eyJhbGci..."}
+/api/orders no token  "Please sign in to continue"
+manager -> products   "Only an admin can change the catalogue"
+admin   -> /staff     "Only the shop owner can do that"
+owner   -> demote me  "You cannot change your own role"
+order claiming price 0.01 on a $100 item   -> charged $100
+password reset        -> every old token is instantly refused
+invite code reused    -> "That invitation is not valid"
 ```
 
 ### Next
@@ -782,14 +981,13 @@ reset password      -> the old token is instantly refused
 [x] Middleware to protect routes
 [x] Orders API
 [x] Connect React to the API and delete the localStorage account code
-[ ] Admin pages: add products, move an order to SHIPPED
-[ ] Real payments instead of the Stripe placeholder
-[ ] Deploy
+[ ] Real payments instead of the Stripe payment link
+[ ] Delete images from Cloudinary when a product stops using them
 ```
 
 ---
 
-## 15. How to actually remember all this
+## 18. How to actually remember all this
 
 I do not need to memorise it. Professional developers look this up all the
 time. What matters is knowing the **shape** of the answer, so I know what to
