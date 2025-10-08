@@ -3,6 +3,7 @@ import crypto from "crypto";
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
 import { sendMailQuietly } from "../config/mailer.js";
+import { isConfigured as stripeConfigured, getStripe } from "../config/stripe.js";
 import { orderConfirmationEmail } from "../emails/templates.js";
 
 // A function rather than a constant: module level code runs before .env is
@@ -23,6 +24,74 @@ const makeReference = () => {
 };
 
 const round = (n) => Math.round(n * 100) / 100;
+
+/*
+  The receipt, to the customer and to whoever is watching the shop inbox.
+
+  Sent quietly: by the time this runs the order exists and, for a card order,
+  the money has moved. Telling somebody their order failed because an email
+  did not send would be a lie about the important part.
+*/
+const sendReceipt = ({ order, customerName, customerEmail }) => {
+  const receipt = orderConfirmationEmail({ name: customerName, order, shopUrl: shopUrl() });
+
+  sendMailQuietly({ to: order.shipping.email, ...receipt });
+
+  // A shop with nobody watching the inbox does not ship anything.
+  if (process.env.ADMIN_EMAIL) {
+    sendMailQuietly({
+      to: process.env.ADMIN_EMAIL,
+      subject: `New order ${order.reference} - ${customerEmail}`,
+      html: receipt.html,
+      text: receipt.text,
+    });
+  }
+};
+
+/*
+  Hand Stripe the same lines the order was built from.
+
+  Amounts are in the smallest unit - cents - because floating point and money
+  are a bad pair, and every payment API in the world made the same decision.
+
+  Delivery is its own line rather than folded into the prices, so the page
+  Stripe shows reads like the basket the customer just looked at.
+*/
+const createCheckoutSession = async ({ order, email }) => {
+  const stripe = getStripe();
+
+  const lineItems = order.items.map((item) => ({
+    price_data: {
+      currency: "usd",
+      product_data: { name: `${item.name} (${item.size})` },
+      unit_amount: Math.round(item.price * 100),
+    },
+    quantity: item.quantity,
+  }));
+
+  if (order.deliveryFee > 0) {
+    lineItems.push({
+      price_data: {
+        currency: "usd",
+        product_data: { name: "Delivery" },
+        unit_amount: Math.round(order.deliveryFee * 100),
+      },
+      quantity: 1,
+    });
+  }
+
+  return stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: lineItems,
+    customer_email: email,
+    // Comes back on the webhook. Matching on this rather than on anything in
+    // the URL is what makes the confirmation trustworthy.
+    client_reference_id: order.reference,
+    metadata: { reference: order.reference },
+    success_url: `${shopUrl()}/orders?ref=${order.reference}&paid=1`,
+    cancel_url: `${shopUrl()}/placeorder?cancelled=${order.reference}`,
+  });
+};
 
 /*
   Place an order.
@@ -74,6 +143,15 @@ const placeOrder = async (req, res) => {
     const DELIVERY_FEE = deliveryFee();
     const subtotal = round(lines.reduce((sum, line) => sum + line.price * line.quantity, 0));
 
+    const byCard = paymentMethod === "STRIPE";
+
+    if (byCard && !stripeConfigured()) {
+      return res.status(503).json({
+        success: false,
+        message: "Card payments are not set up. Please choose cash on delivery.",
+      });
+    }
+
     const order = await orderModel.create({
       user: req.user._id,
       reference: makeReference(),
@@ -83,23 +161,25 @@ const placeOrder = async (req, res) => {
       subtotal,
       deliveryFee: DELIVERY_FEE,
       total: round(subtotal + DELIVERY_FEE),
-      paymentMethod: paymentMethod === "STRIPE" ? "STRIPE" : "COD",
+      paymentMethod: byCard ? "STRIPE" : "COD",
+      // A card order is not an order yet - it is an intention. It becomes
+      // CONFIRMED when Stripe says the money moved, and not before.
+      status: byCard ? "AWAITING_PAYMENT" : "CONFIRMED",
     });
 
-    // The order is saved. The receipt is a courtesy on top of that, so it is
-    // sent quietly and never gets to fail the request.
-    const receipt = orderConfirmationEmail({ name: req.user.name, order, shopUrl: shopUrl() });
-    sendMailQuietly({ to: shipping.email, ...receipt });
+    if (byCard) {
+      const session = await createCheckoutSession({ order, email: shipping.email });
 
-    // A shop with nobody watching the inbox does not ship anything.
-    if (process.env.ADMIN_EMAIL) {
-      sendMailQuietly({
-        to: process.env.ADMIN_EMAIL,
-        subject: `New order ${order.reference} - ${req.user.email}`,
-        html: receipt.html,
-        text: receipt.text,
-      });
+      order.stripeSessionId = session.id;
+      await order.save();
+
+      // No email yet. Nothing has been bought until the card clears, and a
+      // receipt for an abandoned basket is worse than no receipt.
+      return res.status(201).json({ success: true, order, checkoutUrl: session.url });
     }
+
+    // Cash on delivery: the order stands on its own, so send the receipt now.
+    sendReceipt({ order, customerName: req.user.name, customerEmail: req.user.email });
 
     res.status(201).json({ success: true, order });
   } catch (error) {
@@ -161,6 +241,9 @@ const listAllOrders = async (req, res) => {
   }
 };
 
+// AWAITING_PAYMENT is deliberately not here. Stripe decides that one; an
+// admin marking an unpaid order as paid by hand is the bug this whole flow
+// exists to prevent.
 const STATUSES = ["CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
 /*
@@ -193,4 +276,73 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-export { placeOrder, listMyOrders, getMyOrder, listAllOrders, updateOrderStatus };
+/*
+  Stripe telling us what happened.
+
+  This is the only thing in the app that may declare an order paid. Not the
+  browser arriving at the success page - anyone can type that URL - and not
+  the customer saying so. Stripe signs this request with a secret only it and
+  this server hold, and an unsigned one is thrown away.
+
+  The raw body matters: the signature is over the exact bytes Stripe sent, so
+  this route is mounted with express.raw() before the JSON parser can reshape
+  it. Parsing then re-encoding changes a byte somewhere and the signature
+  stops matching, which is a genuinely miserable afternoon to debug.
+*/
+const stripeWebhook = async (req, res) => {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!stripeConfigured() || !secret) {
+    return res.status(503).send("Stripe is not configured");
+  }
+
+  let event;
+  try {
+    event = getStripe().webhooks.constructEvent(req.body, req.headers["stripe-signature"], secret);
+  } catch (error) {
+    // Anything that fails here was not sent by Stripe, or was tampered with.
+    console.error("stripe webhook rejected:", error.message);
+    return res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+
+  try {
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      const reference = session.client_reference_id || session.metadata?.reference;
+
+      const order = await orderModel.findOne({ reference }).populate("user", "name email");
+
+      if (!order) {
+        console.warn(`stripe webhook: no order for reference ${reference}`);
+      } else if (order.paid) {
+        // Stripe retries until it gets a 2xx, so the same event can arrive
+        // more than once. Doing nothing the second time is what makes that
+        // safe - otherwise every retry sends another receipt.
+        console.log(`stripe webhook: ${reference} was already paid`);
+      } else {
+        order.paid = true;
+        order.paidAt = new Date();
+        order.status = "CONFIRMED";
+        await order.save();
+
+        sendReceipt({
+          order,
+          customerName: order.user?.name || order.shipping.fullName,
+          customerEmail: order.user?.email || order.shipping.email,
+        });
+
+        console.log(`stripe webhook: ${reference} paid`);
+      }
+    }
+  } catch (error) {
+    // A 500 makes Stripe retry, which is what we want if the database was
+    // briefly unavailable.
+    console.error("stripe webhook handling failed:", error);
+    return res.status(500).send("Handler failed");
+  }
+
+  // Answer quickly. Stripe treats a slow reply as a failure and retries.
+  res.json({ received: true });
+};
+
+export { placeOrder, listMyOrders, getMyOrder, listAllOrders, updateOrderStatus, stripeWebhook };

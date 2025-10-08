@@ -54,10 +54,26 @@ const orderSchema = new mongoose.Schema(
     deliveryFee: { type: Number, required: true },
     total: { type: Number, required: true },
 
-    paymentMethod: { type: String, default: "COD" },
+    paymentMethod: { type: String, enum: ["COD", "STRIPE"], default: "COD" },
+
+    /*
+      Paid is its own field, not a status.
+
+      A card order is placed before it is paid and can be abandoned at the
+      card form. A cash order is the other way round - confirmed straight
+      away, paid at the door. One flag cannot be squeezed into a single
+      status without lying about one of them.
+    */
+    paid: { type: Boolean, default: false },
+    paidAt: { type: Date },
+
+    // Ties a Stripe webhook back to the order it is about. Indexed because
+    // that lookup happens on every webhook.
+    stripeSessionId: { type: String, index: true, sparse: true },
+
     status: {
       type: String,
-      enum: ["CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "CANCELLED"],
+      enum: ["AWAITING_PAYMENT", "CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "CANCELLED"],
       default: "CONFIRMED",
     },
   },

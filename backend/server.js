@@ -9,16 +9,28 @@ import mongoose from "mongoose";
 
 import connectDB from "./config/db.js";
 import { verifyMailer } from "./config/mailer.js";
+import { verifyStripe } from "./config/stripe.js";
 import productRouter from "./routes/productRoute.js";
 import userRouter from "./routes/userRoute.js";
 import orderRouter from "./routes/orderRoute.js";
 import cartRouter from "./routes/cartRoute.js";
 import uploadRouter from "./routes/uploadRoute.js";
+import stripeRouter from "./routes/stripeRoute.js";
 
 connectDB(); // connect to MongoDB
 verifyMailer(); // check the SMTP login now, not at the first signup
+verifyStripe(); // and say which Stripe key is loaded, test or live
 
 const app = express(); // this the main this what creates and starts the app
+
+/*
+  Stripe first, before express.json().
+
+  The webhook signature covers the exact bytes Stripe sent, so that one route
+  needs the raw body. Once express.json() has parsed a request there is no
+  way back to the original bytes, and the signature check fails forever.
+*/
+app.use("/api/stripe", stripeRouter);
 
 app.use(express.json()); // this line basice sends the data to the backend
 
