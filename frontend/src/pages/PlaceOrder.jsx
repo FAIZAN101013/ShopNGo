@@ -5,12 +5,22 @@ import { AuthContext } from '../context/AuthContext'
 import { assets } from '../assets/assets'
 import { createOrder, imageUrl } from '../services/api'
 import { toast } from 'react-toastify'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 const PlaceOrder = () => {
   const { products, cartItems, currency, delivery_fee, clearCart } = useContext(ShopContext)
   const { user } = useContext(AuthContext)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  // Stripe sends people back here when they close the payment page. Their
+  // basket is still intact, so say what happened rather than leaving them to
+  // wonder whether they were charged.
+  useEffect(() => {
+    if (searchParams.get('cancelled')) {
+      toast.info('Payment cancelled. Your basket is still here.')
+    }
+  }, [searchParams])
 
   const cartItemsWithDetails = useMemo(() => {
     const items = []
@@ -72,20 +82,23 @@ const PlaceOrder = () => {
     return cartItemsWithDetails.length > 0
   }
 
-  const handleStripePay = () => {
-    if (!validate()) {
-      toast.error('Please complete shipping details and ensure cart is not empty')
-      return
-    }
-    const stripeLink = import.meta.env.VITE_STRIPE_PAYMENT_LINK
-    if (stripeLink) {
-      window.location.href = stripeLink
-    } else {
-      toast.info('Stripe payment link not configured. Falling back to COD flow.')
-    }
-  }
+  /*
+    Card payment.
 
-  const handlePlaceOrderCOD = async () => {
+    This used to be a Stripe payment link read from an env var: it sent the
+    customer to a page that knew nothing about their basket, and told this
+    shop nothing when they paid. Now the server builds a Checkout Session
+    from the real order and Stripe reports back to it directly.
+
+    The cart is deliberately NOT cleared here. Nothing has been bought until
+    the card clears, and emptying the basket of somebody who then closes the
+    payment page is a good way to lose the sale.
+  */
+  const handleStripePay = () => submitOrder('STRIPE')
+
+  const handlePlaceOrderCOD = () => submitOrder('COD')
+
+  const submitOrder = async (paymentMethod) => {
     if (!validate()) {
       toast.error('Please complete shipping details and ensure cart is not empty')
       return
@@ -96,7 +109,7 @@ const PlaceOrder = () => {
       // Only what was bought, never what it costs. The server looks every
       // price up again and works out the total itself, because anything the
       // browser sends about money is a suggestion from a stranger.
-      const { order } = await createOrder({
+      const { order, checkoutUrl } = await createOrder({
         items: cartItemsWithDetails.map((item) => ({
           productId: item._id,
           size: item.size,
@@ -104,8 +117,14 @@ const PlaceOrder = () => {
         })),
         shipping,
         notes,
-        paymentMethod: 'COD'
+        paymentMethod
       })
+
+      if (checkoutUrl) {
+        // Off to Stripe. The cart stays put until the payment succeeds.
+        window.location.href = checkoutUrl
+        return
+      }
 
       clearCart()
       toast.success('Order placed. Check your email for the confirmation.')

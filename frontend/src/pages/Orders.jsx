@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import Title from '../components/Title'
+import { ShopContext } from '../context/ShopContext'
 import { fetchOrders, imageUrl } from '../services/api'
 
 /*
@@ -56,6 +57,22 @@ const Orders = () => {
   // Set by checkout, so arriving straight from placing an order opens on
   // that order rather than on a list you then have to search.
   const reference = searchParams.get('ref')
+  const justPaid = searchParams.get('paid') === '1'
+
+  const { clearCart } = useContext(ShopContext)
+
+  /*
+    Coming back from a successful Stripe payment. Checkout deliberately left
+    the basket alone in case the payment was abandoned, so this is where it
+    is finally emptied.
+
+    Note what this does NOT do: it does not mark anything paid. That is the
+    webhook's job, because anybody can type "?paid=1" into the address bar.
+  */
+  useEffect(() => {
+    if (justPaid) clearCart()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justPaid])
 
   useEffect(() => {
     document.title = 'My Orders | ShopNGo'
@@ -135,16 +152,38 @@ const Orders = () => {
               <p className="text-sm text-gray-500">Order reference</p>
               <p className="font-medium text-gray-900">{selected.reference}</p>
             </div>
-            <span className="self-start bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
-              {selected.status}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 self-start">
+              <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                selected.status === 'AWAITING_PAYMENT'
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'bg-green-50 text-green-700'
+              }`}>
+                {selected.status.replace('_', ' ')}
+              </span>
+              <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                selected.paid ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {selected.paid
+                  ? 'Paid'
+                  : selected.paymentMethod === 'COD'
+                    ? 'Pay on delivery'
+                    : 'Not paid'}
+              </span>
+            </div>
           </div>
           <p className="text-sm text-gray-500">
             Placed on {new Date(selected.createdAt).toLocaleString()}
           </p>
-          <p className="mt-1 text-sm text-gray-500">
-            A confirmation is on its way to {selected.shipping.email}.
-          </p>
+          {selected.status === 'AWAITING_PAYMENT' ? (
+            <p className="mt-1 text-sm text-amber-700">
+              We have not received the payment for this order yet. If you closed the card
+              page, nothing has been charged.
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-gray-500">
+              A confirmation is on its way to {selected.shipping.email}.
+            </p>
+          )}
 
           <OrderItems items={selected.items} />
           <OrderSummary order={selected} />
@@ -180,7 +219,7 @@ const Orders = () => {
             {/* This was an <a> pointing at /orders with preventDefault on it -
                 a link built to go nowhere. It is a label, so it is a span. */}
             <span className="self-center text-sm text-gray-500">
-              Paid by {selected.paymentMethod === 'COD' ? 'Cash on Delivery' : selected.paymentMethod}
+              {selected.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Card payment'}
             </span>
           </div>
         </div>
@@ -212,8 +251,12 @@ const Orders = () => {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
-                  {order.status}
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  order.status === 'AWAITING_PAYMENT'
+                    ? 'bg-amber-50 text-amber-700'
+                    : 'bg-green-50 text-green-700'
+                }`}>
+                  {order.status.replace('_', ' ')}
                 </span>
                 <span className="font-medium text-gray-900">{money(order.total)}</span>
               </div>

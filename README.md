@@ -20,7 +20,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 - 🎚️ **Filtering & sorting** — filter by category, sub-category and price range; sort by relevance or price
 - 👕 **Product detail pages** — image gallery, size selection, description/review tabs, and related products
 - 🧺 **Cart** — add by size, update quantities, remove items, running item count in the navbar
-- 💳 **Checkout** — shipping form with validation, order summary, Cash-on-Delivery flow plus an optional Stripe Payment Link
+- 💳 **Checkout** — shipping form with validation, order summary, cash on delivery or a Stripe card payment
 - 📱 **Responsive design** — mobile, tablet and desktop layouts throughout
 
 ### Accounts & orders
@@ -59,7 +59,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 | **Email** | Brevo HTTP API, with Nodemailer/SMTP for local use |
 | **Notifications** | `react-toastify` |
 | **Linting** | ESLint 9 |
-| **Payments** | Stripe Payment Link (optional, via env var) |
+| **Payments** | Stripe Checkout Sessions, confirmed by webhook |
 
 ---
 
@@ -156,13 +156,14 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `CLOUDINARY_CLOUD_NAME` · `CLOUDINARY_API_KEY` · `CLOUDINARY_API_SECRET` | Product image uploads. Without them the admin page asks for URLs instead |
 | `CLOUDINARY_FOLDER` | Where uploads land (default `shopngo`) |
 | `MAIL_DRY_RUN` | `1` prints emails to the terminal instead of sending them |
+| `STRIPE_SECRET_KEY` | Card payments. `sk_test_…` costs nothing; without it the card button is disabled |
+| `STRIPE_WEBHOOK_SECRET` | Proves a payment notification really came from Stripe |
 
 **`frontend/.env`**
 
 | Variable | Purpose |
 |---|---|
 | `VITE_API_URL` | Where the API lives (default `http://localhost:4000`) |
-| `VITE_STRIPE_PAYMENT_LINK` | Optional; without it the Stripe button falls back to COD |
 
 ---
 
@@ -182,7 +183,8 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `GET` · `PUT` | `/api/user/profile` | ✅ | Read / update the signed-in account |
 | `GET` · `PUT` | `/api/cart` | ✅ | Read / replace the cart on your account |
 | `GET` | `/api/upload/signature` | 🛡️ | Permission to upload one image to Cloudinary |
-| `POST` | `/api/orders` | ✅ | Place an order |
+| `POST` | `/api/orders` | ✅ | Place an order (returns a Stripe checkout URL for card payments) |
+| `POST` | `/api/stripe/webhook` | 🔏 | Stripe confirming a payment — signed, never called by a browser |
 | `GET` | `/api/orders` | ✅ | Your order history |
 | `GET` | `/api/orders/:reference` | ✅ | One of your orders |
 | `GET` | `/api/user/staff` | 👑 | List the owner and admins, or search all accounts |
@@ -192,7 +194,7 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `GET` | `/api/orders/all` | 👔 | Every order in the shop |
 | `PATCH` | `/api/orders/:reference/status` | 👔 | Move an order along |
 
-Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 👔 needs any staff role; 🛡️ needs an admin or owner; 👑 needs the owner.
+Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 👔 needs any staff role; 🛡️ needs an admin or owner; 👑 needs the owner; 🔏 is verified by a Stripe signature instead of a token.
 
 ### Roles
 
@@ -319,7 +321,7 @@ A free Render service **sleeps after 15 minutes without traffic**, so the first 
 - [x] Transactional email: verification, welcome, password reset, receipts
 - [x] Cart tied to the account rather than the browser
 - [x] Admin pages for product and order management
-- [ ] Server-side Stripe / Razorpay checkout sessions
+- [x] Server-side Stripe checkout sessions, confirmed by webhook
 - [x] Uploading product images to Cloudinary
 - [x] Deployment: frontend on Vercel, API on Render
 

@@ -7,6 +7,7 @@ import { adminFetchOrders, adminSetOrderStatus, imageUrl } from '../services/api
 const STATUSES = ['CONFIRMED', 'PACKING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
 
 const STATUS_STYLE = {
+  AWAITING_PAYMENT: 'bg-amber-50 text-amber-700',
   CONFIRMED: 'bg-blue-50 text-blue-700',
   PACKING: 'bg-amber-50 text-amber-700',
   SHIPPED: 'bg-purple-50 text-purple-700',
@@ -48,8 +49,15 @@ const AdminOrders = () => {
     [orders, filter]
   )
 
+  /*
+    Only orders that were paid for, or will be on delivery. An abandoned card
+    payment is not revenue, and counting it would make this number a lie.
+  */
   const revenue = useMemo(
-    () => orders.filter((o) => o.status !== 'CANCELLED').reduce((sum, o) => sum + o.total, 0),
+    () =>
+      orders
+        .filter((o) => o.status !== 'CANCELLED' && o.status !== 'AWAITING_PAYMENT')
+        .reduce((sum, o) => sum + o.total, 0),
     [orders]
   )
 
@@ -128,22 +136,39 @@ const AdminOrders = () => {
                   {order.shipping.fullName} &bull; {order.shipping.email}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-400">
-                  {new Date(order.createdAt).toLocaleString()} &bull; {order.paymentMethod}
+                  {new Date(order.createdAt).toLocaleString()} &bull;{' '}
+                  {order.paymentMethod === 'COD' ? 'Cash on delivery' : 'Card'}
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
                 <span className="font-medium text-gray-900">{money(order.total)}</span>
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLE[order.status]}`}>
-                  {order.status}
+                  {order.status.replace('_', ' ')}
                 </span>
+                {/* Whether the money arrived is a different question from
+                    where the parcel is, so it gets its own badge. */}
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    order.paid ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+                  }`}
+                  title={order.paidAt ? `Paid ${new Date(order.paidAt).toLocaleString()}` : undefined}
+                >
+                  {order.paid ? 'Paid' : order.paymentMethod === 'COD' ? 'Cash on delivery' : 'Unpaid'}
+                </span>
+                {/* An unpaid card order has nothing to pack. Stripe moves it
+                    out of AWAITING_PAYMENT; an admin doing it by hand is the
+                    exact mistake this flow exists to prevent. */}
                 <select
                   value={order.status}
-                  disabled={saving === order.reference}
+                  disabled={saving === order.reference || order.status === 'AWAITING_PAYMENT'}
                   onChange={(e) => changeStatus(order, e.target.value)}
                   aria-label={`Status for ${order.reference}`}
                   className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-xs outline-none transition-colors hover:border-gray-900 disabled:opacity-50"
                 >
+                  {order.status === 'AWAITING_PAYMENT' && (
+                    <option value="AWAITING_PAYMENT">AWAITING PAYMENT</option>
+                  )}
                   {STATUSES.map((status) => (
                     <option key={status} value={status}>{status}</option>
                   ))}
