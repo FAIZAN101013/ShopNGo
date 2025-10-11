@@ -20,7 +20,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 - 🎚️ **Filtering & sorting** — filter by category, sub-category and price range; sort by relevance or price
 - 👕 **Product detail pages** — image gallery, size selection, description/review tabs, and related products
 - 🧺 **Cart** — add by size, update quantities, remove items, running item count in the navbar
-- 💳 **Checkout** — shipping form with validation, order summary, cash on delivery or a Stripe card payment
+- 💳 **Checkout** — shipping form with validation, order summary, cash on delivery, and an online card/UPI flow confirmed by webhook
 - 📱 **Responsive design** — mobile, tablet and desktop layouts throughout
 
 ### Accounts & orders
@@ -59,7 +59,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 | **Email** | Brevo HTTP API, with Nodemailer/SMTP for local use |
 | **Notifications** | `react-toastify` |
 | **Linting** | ESLint 9 |
-| **Payments** | Stripe Checkout Sessions, confirmed by webhook |
+| **Payments** | Cash on delivery live; online payment (Razorpay) implemented, awaiting keys |
 
 ---
 
@@ -156,8 +156,9 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `CLOUDINARY_CLOUD_NAME` · `CLOUDINARY_API_KEY` · `CLOUDINARY_API_SECRET` | Product image uploads. Without them the admin page asks for URLs instead |
 | `CLOUDINARY_FOLDER` | Where uploads land (default `shopngo`) |
 | `MAIL_DRY_RUN` | `1` prints emails to the terminal instead of sending them |
-| `STRIPE_SECRET_KEY` | Card payments. `sk_test_…` costs nothing; without it the card button is disabled |
-| `STRIPE_WEBHOOK_SECRET` | Proves a payment notification really came from Stripe |
+| `RAZORPAY_KEY_ID` · `RAZORPAY_KEY_SECRET` | Online payments. Without them the card button says so and cash on delivery carries on |
+| `RAZORPAY_WEBHOOK_SECRET` | Proves a payment notification is genuine |
+| `INR_PER_USD` | The catalogue is priced in dollars; an Indian account settles in rupees |
 
 **`frontend/.env`**
 
@@ -183,8 +184,8 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `GET` · `PUT` | `/api/user/profile` | ✅ | Read / update the signed-in account |
 | `GET` · `PUT` | `/api/cart` | ✅ | Read / replace the cart on your account |
 | `GET` | `/api/upload/signature` | 🛡️ | Permission to upload one image to Cloudinary |
-| `POST` | `/api/orders` | ✅ | Place an order (returns a Stripe checkout URL for card payments) |
-| `POST` | `/api/stripe/webhook` | 🔏 | Stripe confirming a payment — signed, never called by a browser |
+| `POST` | `/api/orders` | ✅ | Place an order (returns payment details for an online payment) |
+| `POST` | `/api/payments/webhook` | 🔏 | The provider confirming a payment — signed, never called by a browser |
 | `GET` | `/api/orders` | ✅ | Your order history |
 | `GET` | `/api/orders/:reference` | ✅ | One of your orders |
 | `GET` | `/api/user/staff` | 👑 | List the owner and admins, or search all accounts |
@@ -194,7 +195,7 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `GET` | `/api/orders/all` | 👔 | Every order in the shop |
 | `PATCH` | `/api/orders/:reference/status` | 👔 | Move an order along |
 
-Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 👔 needs any staff role; 🛡️ needs an admin or owner; 👑 needs the owner; 🔏 is verified by a Stripe signature instead of a token.
+Every response has the shape `{ success, ... }`. ✅ needs `Authorization: Bearer <token>`; 👔 needs any staff role; 🛡️ needs an admin or owner; 👑 needs the owner; 🔏 is verified by a payment-provider signature instead of a token.
 
 ### Roles
 
@@ -308,6 +309,12 @@ VITE_API_URL=https://shopngo-api.onrender.com
 
 On Render, set `ALLOWED_ORIGINS` and `FRONTEND_URL` to the Vercel URL. Without `ALLOWED_ORIGINS`, any site on the internet may call the API — including someone hosting a copy of the shop on your database and your email quota.
 
+### A note on payments
+
+**Cash on delivery is the live payment method.** The online card/UPI flow is fully implemented — the server opens the payment against a server-priced order, and an order is marked paid only by a signed webhook, never by the browser returning to a success URL.
+
+It is switched off because getting merchant credentials in India is the hard part, not the code: Stripe is invite-only, and Razorpay wants a PAN before it issues even test keys. Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` and the button starts working; nothing else changes.
+
 ### Free-tier caveat
 
 A free Render service **sleeps after 15 minutes without traffic**, so the first request afterwards takes roughly 50 seconds. Pointing an uptime pinger (e.g. cron-job.org) at `/health` every 14 minutes keeps it awake.
@@ -321,7 +328,8 @@ A free Render service **sleeps after 15 minutes without traffic**, so the first 
 - [x] Transactional email: verification, welcome, password reset, receipts
 - [x] Cart tied to the account rather than the browser
 - [x] Admin pages for product and order management
-- [x] Server-side Stripe checkout sessions, confirmed by webhook
+- [x] Server-side payment orders, confirmed by a signed webhook
+- [ ] Payment provider account (Stripe is invite-only in India, Razorpay needs PAN)
 - [x] Uploading product images to Cloudinary
 - [x] Deployment: frontend on Vercel, API on Render
 

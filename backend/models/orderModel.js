@@ -54,7 +54,7 @@ const orderSchema = new mongoose.Schema(
     deliveryFee: { type: Number, required: true },
     total: { type: Number, required: true },
 
-    paymentMethod: { type: String, enum: ["COD", "STRIPE"], default: "COD" },
+    paymentMethod: { type: String, enum: ["COD", "CARD"], default: "COD" },
 
     /*
       Paid is its own field, not a status.
@@ -67,9 +67,11 @@ const orderSchema = new mongoose.Schema(
     paid: { type: Boolean, default: false },
     paidAt: { type: Date },
 
-    // Ties a Stripe webhook back to the order it is about. Indexed because
-    // that lookup happens on every webhook.
-    stripeSessionId: { type: String, index: true, sparse: true },
+    // The payment provider's own id for this order, and for the payment that
+    // settled it. Named after what they are rather than after the provider,
+    // because this shop has already changed provider once.
+    paymentOrderId: { type: String, index: true, sparse: true },
+    paymentId: { type: String },
 
     status: {
       type: String,

@@ -2,8 +2,8 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import Title from '../components/Title'
 import { ShopContext } from '../context/ShopContext'
 import { AuthContext } from '../context/AuthContext'
-import { assets } from '../assets/assets'
 import { createOrder, imageUrl } from '../services/api'
+import { payForOrder } from '../services/payments'
 import { toast } from 'react-toastify'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -83,18 +83,18 @@ const PlaceOrder = () => {
   }
 
   /*
-    Card payment.
+    Paying online.
 
-    This used to be a Stripe payment link read from an env var: it sent the
-    customer to a page that knew nothing about their basket, and told this
-    shop nothing when they paid. Now the server builds a Checkout Session
-    from the real order and Stripe reports back to it directly.
+    This used to be a payment link read from an env var: it sent the customer
+    to a page that knew nothing about their basket, and told this shop nothing
+    when they paid. Now the server opens a real payment against the priced
+    order, and the provider reports back to the server directly.
 
     The cart is deliberately NOT cleared here. Nothing has been bought until
-    the card clears, and emptying the basket of somebody who then closes the
-    payment page is a good way to lose the sale.
+    the payment clears, and emptying the basket of somebody who then closes
+    the payment window is a good way to lose the sale.
   */
-  const handleStripePay = () => submitOrder('STRIPE')
+  const handlePayOnline = () => submitOrder('CARD')
 
   const handlePlaceOrderCOD = () => submitOrder('COD')
 
@@ -109,7 +109,7 @@ const PlaceOrder = () => {
       // Only what was bought, never what it costs. The server looks every
       // price up again and works out the total itself, because anything the
       // browser sends about money is a suggestion from a stranger.
-      const { order, checkoutUrl } = await createOrder({
+      const { order, payment } = await createOrder({
         items: cartItemsWithDetails.map((item) => ({
           productId: item._id,
           size: item.size,
@@ -120,9 +120,20 @@ const PlaceOrder = () => {
         paymentMethod
       })
 
-      if (checkoutUrl) {
-        // Off to Stripe. The cart stays put until the payment succeeds.
-        window.location.href = checkoutUrl
+      if (payment) {
+        // The payment window. It resolves when they finish and rejects if
+        // they close it, in which case the basket is still theirs.
+        await payForOrder({
+          payment,
+          order,
+          customer: { name: shipping.fullName, email: shipping.email, phone: shipping.phone }
+        })
+
+        clearCart()
+        // Deliberately not "paid" - the provider tells the server that, in a
+        // signed message. This page only knows the window closed happily.
+        toast.success('Payment sent. We will confirm it in a moment.')
+        navigate(`/orders?ref=${order.reference}&paid=1`)
         return
       }
 
@@ -231,22 +242,24 @@ const PlaceOrder = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleStripePay}
-              disabled={cartItemsWithDetails.length === 0 || submitting}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm text-white transition-colors ${cartItemsWithDetails.length === 0 || submitting ? 'bg-[#a8a3ff] cursor-not-allowed' : 'bg-[#635BFF] hover:bg-[#5561F5]'}`}
-              title="Pay securely with Stripe"
-            >
-              <img src={assets.stripe_logo} alt="Stripe" className="w-12 h-auto" />
-              Pay with Stripe
-            </button>
-
+            {/* Cash on delivery is first because it is the one that works
+                today. Paying online is wired up and waiting on an account
+                with a payment provider. */}
             <button
               onClick={handlePlaceOrderCOD}
               disabled={cartItemsWithDetails.length === 0 || submitting}
-              className="w-full mt-3 bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? 'Placing Order...' : 'Cash on Delivery'}
+            </button>
+
+            <button
+              onClick={handlePayOnline}
+              disabled={cartItemsWithDetails.length === 0 || submitting}
+              className="mt-3 w-full rounded-lg border border-gray-300 py-3 text-sm font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+              title="Card or UPI"
+            >
+              Pay online (card or UPI)
             </button>
 
             <Link to="/cart" className="block text-center mt-3 text-sm text-gray-600 underline underline-offset-4 hover:text-gray-900 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">Back to cart</Link>

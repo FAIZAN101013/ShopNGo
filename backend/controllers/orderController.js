@@ -3,7 +3,12 @@ import crypto from "crypto";
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
 import { sendMailQuietly } from "../config/mailer.js";
-import { isConfigured as stripeConfigured, getStripe } from "../config/stripe.js";
+import {
+  isConfigured as paymentsConfigured,
+  createPaymentOrder,
+  verifyWebhookSignature,
+  inrPerUsd,
+} from "../config/razorpay.js";
 import { orderConfirmationEmail } from "../emails/templates.js";
 
 // A function rather than a constant: module level code runs before .env is
@@ -49,48 +54,24 @@ const sendReceipt = ({ order, customerName, customerEmail }) => {
 };
 
 /*
-  Hand Stripe the same lines the order was built from.
+  Ask Razorpay to open an order for this amount.
 
-  Amounts are in the smallest unit - cents - because floating point and money
-  are a bad pair, and every payment API in the world made the same decision.
-
-  Delivery is its own line rather than folded into the prices, so the page
-  Stripe shows reads like the basket the customer just looked at.
+  Only the total goes across, not the basket. Razorpay is being asked to
+  collect a number; what that number is made of is this shop's business, and
+  it is already stored on the order.
 */
-const createCheckoutSession = async ({ order, email }) => {
-  const stripe = getStripe();
+const openPayment = async (order) => {
+  const payment = await createPaymentOrder({ amountUsd: order.total, reference: order.reference });
 
-  const lineItems = order.items.map((item) => ({
-    price_data: {
-      currency: "usd",
-      product_data: { name: `${item.name} (${item.size})` },
-      unit_amount: Math.round(item.price * 100),
-    },
-    quantity: item.quantity,
-  }));
-
-  if (order.deliveryFee > 0) {
-    lineItems.push({
-      price_data: {
-        currency: "usd",
-        product_data: { name: "Delivery" },
-        unit_amount: Math.round(order.deliveryFee * 100),
-      },
-      quantity: 1,
-    });
-  }
-
-  return stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: lineItems,
-    customer_email: email,
-    // Comes back on the webhook. Matching on this rather than on anything in
-    // the URL is what makes the confirmation trustworthy.
-    client_reference_id: order.reference,
-    metadata: { reference: order.reference },
-    success_url: `${shopUrl()}/orders?ref=${order.reference}&paid=1`,
-    cancel_url: `${shopUrl()}/placeorder?cancelled=${order.reference}`,
-  });
+  return {
+    orderId: payment.id,
+    amount: payment.amount,
+    currency: payment.currency,
+    // The publishable half of the key pair. Safe in a browser - it can start
+    // a payment and nothing else.
+    keyId: process.env.RAZORPAY_KEY_ID,
+    rate: inrPerUsd(),
+  };
 };
 
 /*
@@ -143,9 +124,9 @@ const placeOrder = async (req, res) => {
     const DELIVERY_FEE = deliveryFee();
     const subtotal = round(lines.reduce((sum, line) => sum + line.price * line.quantity, 0));
 
-    const byCard = paymentMethod === "STRIPE";
+    const byCard = paymentMethod === "CARD";
 
-    if (byCard && !stripeConfigured()) {
+    if (byCard && !paymentsConfigured()) {
       return res.status(503).json({
         success: false,
         message: "Card payments are not set up. Please choose cash on delivery.",
@@ -161,21 +142,21 @@ const placeOrder = async (req, res) => {
       subtotal,
       deliveryFee: DELIVERY_FEE,
       total: round(subtotal + DELIVERY_FEE),
-      paymentMethod: byCard ? "STRIPE" : "COD",
+      paymentMethod: byCard ? "CARD" : "COD",
       // A card order is not an order yet - it is an intention. It becomes
       // CONFIRMED when Stripe says the money moved, and not before.
       status: byCard ? "AWAITING_PAYMENT" : "CONFIRMED",
     });
 
     if (byCard) {
-      const session = await createCheckoutSession({ order, email: shipping.email });
+      const payment = await openPayment(order);
 
-      order.stripeSessionId = session.id;
+      order.paymentOrderId = payment.orderId;
       await order.save();
 
       // No email yet. Nothing has been bought until the card clears, and a
       // receipt for an abandoned basket is worse than no receipt.
-      return res.status(201).json({ success: true, order, checkoutUrl: session.url });
+      return res.status(201).json({ success: true, order, payment });
     }
 
     // Cash on delivery: the order stands on its own, so send the receipt now.
@@ -277,51 +258,59 @@ const updateOrderStatus = async (req, res) => {
 };
 
 /*
-  Stripe telling us what happened.
+  Razorpay telling us what happened.
 
   This is the only thing in the app that may declare an order paid. Not the
   browser arriving at the success page - anyone can type that URL - and not
-  the customer saying so. Stripe signs this request with a secret only it and
-  this server hold, and an unsigned one is thrown away.
+  the customer saying so. Razorpay signs this request with a secret only it
+  and this server hold, and an unsigned one is thrown away.
 
-  The raw body matters: the signature is over the exact bytes Stripe sent, so
+  The raw body matters: the signature is over the exact bytes they sent, so
   this route is mounted with express.raw() before the JSON parser can reshape
-  it. Parsing then re-encoding changes a byte somewhere and the signature
-  stops matching, which is a genuinely miserable afternoon to debug.
+  it. Parsing then re-encoding moves a byte somewhere and the signature stops
+  matching forever, which is a genuinely miserable afternoon to debug.
 */
-const stripeWebhook = async (req, res) => {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+const paymentWebhook = async (req, res) => {
+  if (!paymentsConfigured() || !process.env.RAZORPAY_WEBHOOK_SECRET) {
+    return res.status(503).send("Payments are not configured");
+  }
 
-  if (!stripeConfigured() || !secret) {
-    return res.status(503).send("Stripe is not configured");
+  if (!verifyWebhookSignature(req.body, req.headers["x-razorpay-signature"])) {
+    // Whatever this was, Razorpay did not send it.
+    console.error("razorpay webhook rejected: bad signature");
+    return res.status(400).send("Invalid signature");
   }
 
   let event;
   try {
-    event = getStripe().webhooks.constructEvent(req.body, req.headers["stripe-signature"], secret);
-  } catch (error) {
-    // Anything that fails here was not sent by Stripe, or was tampered with.
-    console.error("stripe webhook rejected:", error.message);
-    return res.status(400).send(`Webhook Error: ${error.message}`);
+    event = JSON.parse(req.body.toString("utf8"));
+  } catch {
+    return res.status(400).send("Unreadable body");
   }
 
   try {
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object;
-      const reference = session.client_reference_id || session.metadata?.reference;
+    // "captured" is the money actually taken. "authorized" only means the
+    // bank agreed to it, and an order shipped on an authorisation that is
+    // never captured is a parcel given away.
+    if (event.event === "payment.captured" || event.event === "order.paid") {
+      const payment = event.payload?.payment?.entity || {};
+      const reference = payment.notes?.reference || event.payload?.order?.entity?.receipt;
 
-      const order = await orderModel.findOne({ reference }).populate("user", "name email");
+      const order = await orderModel
+        .findOne(reference ? { reference } : { paymentOrderId: payment.order_id })
+        .populate("user", "name email");
 
       if (!order) {
-        console.warn(`stripe webhook: no order for reference ${reference}`);
+        console.warn(`razorpay webhook: no order for ${reference || payment.order_id}`);
       } else if (order.paid) {
-        // Stripe retries until it gets a 2xx, so the same event can arrive
+        // Razorpay retries until it gets a 2xx, so the same event can arrive
         // more than once. Doing nothing the second time is what makes that
         // safe - otherwise every retry sends another receipt.
-        console.log(`stripe webhook: ${reference} was already paid`);
+        console.log(`razorpay webhook: ${order.reference} was already paid`);
       } else {
         order.paid = true;
         order.paidAt = new Date();
+        order.paymentId = payment.id;
         order.status = "CONFIRMED";
         await order.save();
 
@@ -331,18 +320,18 @@ const stripeWebhook = async (req, res) => {
           customerEmail: order.user?.email || order.shipping.email,
         });
 
-        console.log(`stripe webhook: ${reference} paid`);
+        console.log(`razorpay webhook: ${order.reference} paid`);
       }
     }
   } catch (error) {
-    // A 500 makes Stripe retry, which is what we want if the database was
+    // A 500 makes Razorpay retry, which is what we want if the database was
     // briefly unavailable.
-    console.error("stripe webhook handling failed:", error);
+    console.error("razorpay webhook handling failed:", error);
     return res.status(500).send("Handler failed");
   }
 
-  // Answer quickly. Stripe treats a slow reply as a failure and retries.
+  // Answer quickly. A slow reply is treated as a failure and retried.
   res.json({ received: true });
 };
 
-export { placeOrder, listMyOrders, getMyOrder, listAllOrders, updateOrderStatus, stripeWebhook };
+export { placeOrder, listMyOrders, getMyOrder, listAllOrders, updateOrderStatus, paymentWebhook };

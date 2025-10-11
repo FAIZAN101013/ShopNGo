@@ -74,13 +74,17 @@ services:
       - key: MAIL_DRY_RUN
         value: "0"
 
-      # Card payments. The webhook secret belongs to the endpoint created in
-      # the Stripe dashboard, and is what proves a payment notification
-      # really came from Stripe.
-      - key: STRIPE_SECRET_KEY
+      # Online payments. Left unset the card button simply says payments are
+      # not configured, and cash on delivery carries on working. The webhook
+      # secret is what proves a payment notification is genuine.
+      - key: RAZORPAY_KEY_ID
         sync: false
-      - key: STRIPE_WEBHOOK_SECRET
+      - key: RAZORPAY_KEY_SECRET
         sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: INR_PER_USD
+        value: "83"
 
       # Product image uploads. The browser sends files straight to
       # Cloudinary; this service only signs them, so the secret stays here.
