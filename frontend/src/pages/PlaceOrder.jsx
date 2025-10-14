@@ -2,8 +2,9 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import Title from '../components/Title'
 import { ShopContext } from '../context/ShopContext'
 import { AuthContext } from '../context/AuthContext'
-import { createOrder, imageUrl } from '../services/api'
+import { createOrder, confirmDemoPayment, imageUrl } from '../services/api'
 import { payForOrder } from '../services/payments'
+import DemoPaymentSheet from '../components/DemoPaymentSheet'
 import { toast } from 'react-toastify'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -57,6 +58,10 @@ const PlaceOrder = () => {
   })
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Set when the server says there is no payment provider, so the online
+  // flow runs as a demonstration instead.
+  const [demo, setDemo] = useState(null)
 
   // You are signed in to be here, so we already know two of these. Typing
   // your own name and address into a form that has them is busywork.
@@ -120,6 +125,13 @@ const PlaceOrder = () => {
         paymentMethod
       })
 
+      if (payment?.demo) {
+        // Hand over to the demo sheet. The order is already saved and
+        // waiting; nothing is confirmed until the server says so.
+        setDemo({ ...payment, reference: order.reference })
+        return
+      }
+
       if (payment) {
         // The payment window. It resolves when they finish and rejects if
         // they close it, in which case the basket is still theirs.
@@ -149,8 +161,35 @@ const PlaceOrder = () => {
     }
   }
 
+  const onDemoPaid = async () => {
+    try {
+      await confirmDemoPayment(demo.reference)
+      clearCart()
+      toast.success('Payment successful. Check your email for the confirmation.')
+      navigate(`/orders?ref=${demo.reference}`)
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setDemo(null)
+    }
+  }
+
   return (
     <div className="pt-10 pb-16">
+      {demo && (
+        <DemoPaymentSheet
+          amountUsd={demo.amountUsd}
+          rate={demo.rate}
+          reference={demo.reference}
+          onPaid={onDemoPaid}
+          onFailed={() => setDemo(null)}
+          onClose={() => {
+            setDemo(null)
+            toast.info('Payment cancelled. Your basket is still here.')
+          }}
+        />
+      )}
+
       <div className="mb-6">
         <Title text1={"CHECK"} text2={"OUT"} />
       </div>

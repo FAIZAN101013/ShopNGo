@@ -59,7 +59,7 @@ It covers the complete journey — browsing and filtering a catalog, viewing pro
 | **Email** | Brevo HTTP API, with Nodemailer/SMTP for local use |
 | **Notifications** | `react-toastify` |
 | **Linting** | ESLint 9 |
-| **Payments** | Cash on delivery live; online payment (Razorpay) implemented, awaiting keys |
+| **Payments** | Cash on delivery, plus an online flow (Razorpay) that runs in demo mode without keys |
 
 ---
 
@@ -159,6 +159,7 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `RAZORPAY_KEY_ID` · `RAZORPAY_KEY_SECRET` | Online payments. Without them the card button says so and cash on delivery carries on |
 | `RAZORPAY_WEBHOOK_SECRET` | Proves a payment notification is genuine |
 | `INR_PER_USD` | The catalogue is priced in dollars; an Indian account settles in rupees |
+| `PAYMENTS_DEMO` | With no keys, run the online flow as a labelled demo (`0` disables it) |
 
 **`frontend/.env`**
 
@@ -185,6 +186,7 @@ Both `.env` files are gitignored. `.env.example` in each folder is the template.
 | `GET` · `PUT` | `/api/cart` | ✅ | Read / replace the cart on your account |
 | `GET` | `/api/upload/signature` | 🛡️ | Permission to upload one image to Cloudinary |
 | `POST` | `/api/orders` | ✅ | Place an order (returns payment details for an online payment) |
+| `POST` | `/api/orders/:reference/confirm-demo` | ✅ | Finish a demo payment — refused once real keys exist |
 | `POST` | `/api/payments/webhook` | 🔏 | The provider confirming a payment — signed, never called by a browser |
 | `GET` | `/api/orders` | ✅ | Your order history |
 | `GET` | `/api/orders/:reference` | ✅ | One of your orders |
@@ -311,9 +313,11 @@ On Render, set `ALLOWED_ORIGINS` and `FRONTEND_URL` to the Vercel URL. Without `
 
 ### A note on payments
 
-**Cash on delivery is the live payment method.** The online card/UPI flow is fully implemented — the server opens the payment against a server-priced order, and an order is marked paid only by a signed webhook, never by the browser returning to a success URL.
+The online card/UPI flow is fully implemented: the server opens the payment against a server-priced order, and an order is marked paid only by a **signed webhook** — never by the browser returning to a success URL.
 
-It is switched off because getting merchant credentials in India is the hard part, not the code: Stripe is invite-only, and Razorpay wants a PAN before it issues even test keys. Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` and the button starts working; nothing else changes.
+Getting merchant credentials in India is the hard part, not the code. Stripe is invite-only there, and Razorpay wants a PAN before it issues even test keys. So with no keys configured the shop runs the online flow as a **clearly labelled demonstration**: choose UPI, card or net banking, watch it process, succeed or fail. Nothing pretends to be real — the sheet is badged DEMO, there is a button for failing on purpose, and every such order is stored and displayed as *Paid (demo)*.
+
+Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` and it becomes a real payment. The demo endpoint stops answering the moment those exist.
 
 ### Free-tier caveat
 

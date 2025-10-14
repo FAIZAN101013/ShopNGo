@@ -141,6 +141,14 @@ export const saveCart = (cart) =>
 export const createOrder = (payload) =>
   request('/api/orders', { method: 'POST', auth: true, body: payload })
 
+/*
+  Only answers while the shop has no payment provider. The server refuses it
+  outright once real keys exist, so this cannot become a way to mark a real
+  order paid.
+*/
+export const confirmDemoPayment = (reference) =>
+  request(`/api/orders/${reference}/confirm-demo`, { method: 'POST', auth: true })
+
 export const fetchOrders = async () => {
   const data = await request('/api/orders', { auth: true })
   return data.orders || []

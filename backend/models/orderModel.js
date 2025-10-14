@@ -73,6 +73,11 @@ const orderSchema = new mongoose.Schema(
     paymentOrderId: { type: String, index: true, sparse: true },
     paymentId: { type: String },
 
+    // This order was paid in demo mode: the flow ran, no money moved. Stored
+    // rather than inferred, so an order placed while the shop had no payment
+    // provider still reads honestly years later.
+    demoPayment: { type: Boolean, default: false },
+
     status: {
       type: String,
       enum: ["AWAITING_PAYMENT", "CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "CANCELLED"],

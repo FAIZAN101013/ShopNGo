@@ -164,7 +164,7 @@ const Orders = () => {
                 selected.paid ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
               }`}>
                 {selected.paid
-                  ? 'Paid'
+                  ? selected.demoPayment ? 'Paid (demo)' : 'Paid'
                   : selected.paymentMethod === 'COD'
                     ? 'Pay on delivery'
                     : 'Not paid'}

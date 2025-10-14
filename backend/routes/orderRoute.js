@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   placeOrder,
+  confirmDemoPayment,
   listMyOrders,
   getMyOrder,
   listAllOrders,
@@ -22,6 +23,9 @@ orderRouter.use(requireAuth);
 
 orderRouter.post("/", placeOrder);
 orderRouter.get("/", listMyOrders);
+
+// Only answers while there is no real payment provider. See the controller.
+orderRouter.post("/:reference/confirm-demo", confirmDemoPayment);
 
 /*
   These two come BEFORE "/:reference". Express takes the first route that

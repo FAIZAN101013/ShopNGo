@@ -5,6 +5,7 @@ import productModel from "../models/productModel.js";
 import { sendMailQuietly } from "../config/mailer.js";
 import {
   isConfigured as paymentsConfigured,
+  isDemo as paymentsInDemo,
   createPaymentOrder,
   verifyWebhookSignature,
   inrPerUsd,
@@ -125,8 +126,9 @@ const placeOrder = async (req, res) => {
     const subtotal = round(lines.reduce((sum, line) => sum + line.price * line.quantity, 0));
 
     const byCard = paymentMethod === "CARD";
+    const demo = byCard && !paymentsConfigured() && paymentsInDemo();
 
-    if (byCard && !paymentsConfigured()) {
+    if (byCard && !paymentsConfigured() && !demo) {
       return res.status(503).json({
         success: false,
         message: "Card payments are not set up. Please choose cash on delivery.",
@@ -148,6 +150,16 @@ const placeOrder = async (req, res) => {
       status: byCard ? "AWAITING_PAYMENT" : "CONFIRMED",
     });
 
+    if (demo) {
+      // No provider to call. The order waits for the browser to walk through
+      // the demo payment sheet and come back to /confirm-demo.
+      return res.status(201).json({
+        success: true,
+        order,
+        payment: { demo: true, amountUsd: order.total, rate: inrPerUsd() },
+      });
+    }
+
     if (byCard) {
       const payment = await openPayment(order);
 
@@ -166,6 +178,52 @@ const placeOrder = async (req, res) => {
   } catch (error) {
     console.error("place order failed:", error);
     res.status(500).json({ success: false, message: "Could not place the order. Please try again." });
+  }
+};
+
+/*
+  Finish a demo payment.
+
+  This is the one place where the browser IS allowed to say an order is paid,
+  and it exists only because there is no provider to say it instead. Every
+  guard that matters is still here:
+
+  - it refuses outright once real payment keys are configured
+  - the order must belong to whoever is asking
+  - the order must actually be waiting for payment, so it cannot be replayed
+  - what it writes says demoPayment, so nobody later mistakes it for money
+
+  If a real provider is ever connected, this route stops answering and the
+  webhook is the only way an order becomes paid again.
+*/
+const confirmDemoPayment = async (req, res) => {
+  try {
+    if (paymentsConfigured() || !paymentsInDemo()) {
+      return res.status(403).json({ success: false, message: "Demo payments are not enabled" });
+    }
+
+    const order = await orderModel.findOne({
+      reference: req.params.reference,
+      user: req.user._id,
+    });
+
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (order.status !== "AWAITING_PAYMENT") {
+      return badRequest(res, "That order is not waiting for a payment");
+    }
+
+    order.paid = true;
+    order.paidAt = new Date();
+    order.demoPayment = true;
+    order.status = "CONFIRMED";
+    await order.save();
+
+    sendReceipt({ order, customerName: req.user.name, customerEmail: req.user.email });
+
+    res.json({ success: true, order });
+  } catch (error) {
+    console.error("demo payment failed:", error);
+    res.status(500).json({ success: false, message: "Could not confirm that payment" });
   }
 };
 
@@ -334,4 +392,12 @@ const paymentWebhook = async (req, res) => {
   res.json({ received: true });
 };
 
-export { placeOrder, listMyOrders, getMyOrder, listAllOrders, updateOrderStatus, paymentWebhook };
+export {
+  placeOrder,
+  confirmDemoPayment,
+  listMyOrders,
+  getMyOrder,
+  listAllOrders,
+  updateOrderStatus,
+  paymentWebhook,
+};

@@ -85,6 +85,10 @@ services:
         sync: false
       - key: INR_PER_USD
         value: "83"
+      # With no keys above, the online flow runs as a labelled demonstration
+      # so the checkout journey can be seen end to end.
+      - key: PAYMENTS_DEMO
+        value: "1"
 
       # Product image uploads. The browser sends files straight to
       # Cloudinary; this service only signs them, so the secret stays here.

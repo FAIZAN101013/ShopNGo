@@ -154,7 +154,11 @@ const AdminOrders = () => {
                   }`}
                   title={order.paidAt ? `Paid ${new Date(order.paidAt).toLocaleString()}` : undefined}
                 >
-                  {order.paid ? 'Paid' : order.paymentMethod === 'COD' ? 'Cash on delivery' : 'Unpaid'}
+                  {order.paid
+                    ? order.demoPayment ? 'Paid (demo)' : 'Paid'
+                    : order.paymentMethod === 'COD'
+                      ? 'Cash on delivery'
+                      : 'Unpaid'}
                 </span>
                 {/* An unpaid card order has nothing to pack. Stripe moves it
                     out of AWAITING_PAYMENT; an admin doing it by hand is the

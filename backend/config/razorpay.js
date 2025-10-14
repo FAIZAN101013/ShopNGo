@@ -36,6 +36,24 @@ const isConfigured = () =>
   Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
 
 /*
+  Demo mode.
+
+  Getting merchant credentials in India turned out to be the hard part:
+  Stripe is invite-only and Razorpay wants a PAN before it will issue even
+  test keys. This is a portfolio shop, and the interesting thing to show is
+  the flow, not a real transaction.
+
+  So with no keys configured, paying online walks through the whole journey -
+  order created, payment window, confirmation, receipt - and marks itself
+  paid without any money existing. Every one of those orders is flagged
+  demoPayment, and every screen that shows it says so. A fake payment that
+  looks real everywhere would be a much worse thing to build.
+
+  The moment real keys appear this switches itself off: isConfigured() wins.
+*/
+const isDemo = () => !isConfigured() && process.env.PAYMENTS_DEMO !== "0";
+
+/*
   The catalogue is priced in dollars and Razorpay accounts in India settle in
   rupees, so the charge is converted at a rate from the environment.
 
@@ -112,7 +130,11 @@ const describeMode = () => {
 
 const verifyRazorpay = () => {
   if (!isConfigured()) {
-    console.log("Razorpay: no keys - card payments are off, cash on delivery still works");
+    console.log(
+      isDemo()
+        ? "Payments: DEMO MODE - the online flow runs end to end and no money moves"
+        : "Payments: no keys and demo off - only cash on delivery is available"
+    );
     return;
   }
 
@@ -123,4 +145,12 @@ const verifyRazorpay = () => {
   }
 };
 
-export { isConfigured, createPaymentOrder, verifyWebhookSignature, verifyRazorpay, inrPerUsd, toPaise };
+export {
+  isConfigured,
+  isDemo,
+  createPaymentOrder,
+  verifyWebhookSignature,
+  verifyRazorpay,
+  inrPerUsd,
+  toPaise,
+};
