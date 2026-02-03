@@ -4,15 +4,11 @@
 
 ---
 
-## 🚧 Current Status
 
-> ⚠️ This project is still in progress.  
-> Some features are incomplete or under testing.  
-> Contributions and feedback are welcome!
 
 ---
 
-## 📽️ Progress Demo
+## 📽️ Demo
 
 [![Watch the demo](https://img.youtube.com/vi/3Jr7WZKXEds/0.jpg)](https://youtu.be/3Jr7WZKXEds)
 
