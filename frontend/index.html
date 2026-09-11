@@ -10,6 +10,11 @@
       content="ShopNGo - browse the latest arrivals in clothing, footwear and accessories."
     />
     <title>ShopNGo</title>
+    <!-- The API is on another origin, so the browser has a DNS lookup and a
+         TLS handshake to do before the first request. Starting them here
+         overlaps that with downloading the bundle. -->
+    <link rel="preconnect" href="https://shopngo-api.onrender.com" crossorigin />
+    <link rel="dns-prefetch" href="https://shopngo-api.onrender.com" />
   </head>
   <body>
     <div id="root"></div>

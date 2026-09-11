@@ -4,6 +4,12 @@
 #
 # So: knock on the door every 14 minutes.
 #
+# Except GitHub does not really do that. Scheduled workflows are best effort
+# and short intervals get heavily deprioritised - asking for every 14 minutes
+# produced runs several HOURS apart in practice, and the service slept right
+# through the gaps. This is kept as a backstop; anything that must actually
+# run on time belongs on a real cron service pointed at /health.
+#
 # Only between 00:00 and 18:59 UTC - that is 05:30 to 00:29 in India, so the
 # API stays awake through the whole day here and is allowed to sleep
 # overnight. That is deliberate. Render's free tier gives 750 instance hours

@@ -20,6 +20,7 @@ import NavBar from './components/Navbar'
 import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
 import ScrollToTop from './components/ScrollToTop'
+import WakingNotice from './components/WakingNotice'
 import RequireAuth from './components/RequireAuth'
 import RequireAdmin from './components/RequireAdmin'
 import { ToastContainer } from 'react-toastify';
@@ -42,6 +43,9 @@ const App = () => {
       <ScrollToTop />
       {showChrome && <NavBar />}
       {showChrome && <SearchBar />}
+      {/* Only appears when the catalogue has been loading for a few seconds,
+          which in practice means the free host is waking up. */}
+      {showChrome && <WakingNotice />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/collection" element={<Collection />} />

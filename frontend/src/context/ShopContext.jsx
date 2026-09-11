@@ -35,6 +35,33 @@ const mergeCarts = (serverCart, localCart) => {
 
 const sameCart = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
+/*
+  The last catalogue this browser saw.
+
+  Kept deliberately simple: no timestamp, no expiry. It is replaced by the
+  real one within a second of the request returning, and it is only ever used
+  to put something on screen while that happens.
+*/
+const PRODUCTS_CACHE_KEY = 'shopngo_products';
+
+const readCachedProducts = () => {
+    try {
+        const cached = JSON.parse(localStorage.getItem(PRODUCTS_CACHE_KEY) || '[]');
+        return Array.isArray(cached) ? cached : [];
+    } catch {
+        return [];
+    }
+};
+
+const writeCachedProducts = (list) => {
+    try {
+        localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(list));
+    } catch {
+        // Storage full or blocked. The shop works; it just will not start
+        // instantly next time.
+    }
+};
+
 const ShopContextProvider = (props) => {
     const currency = '$';
     const delivery_fee = 10;
@@ -56,12 +83,28 @@ const ShopContextProvider = (props) => {
     });
     const [cartItemsCount, setCartItemsCount] = useState(0);
 
-    // The catalogue is fetched once when the app mounts. Everything that
-    // needs products reads them from here, so there is one request rather
-    // than one per page.
-    const [products, setProducts] = useState([]);
-    const [productsLoading, setProductsLoading] = useState(true);
+    /*
+      The catalogue is fetched once when the app mounts. Everything that
+      needs products reads them from here, so there is one request rather
+      than one per page.
+
+      It starts from whatever was seen last time, if anything. The API sleeps
+      on a free host and takes twenty seconds to wake, and a returning
+      visitor staring at grey boxes for that long has already left. Showing
+      the old catalogue immediately and quietly replacing it when the real
+      one arrives costs nothing: prices are recalculated by the server at
+      checkout anyway, so a stale price can only ever be a display bug.
+    */
+    const cachedProducts = readCachedProducts();
+
+    const [products, setProducts] = useState(cachedProducts);
+    const [productsLoading, setProductsLoading] = useState(cachedProducts.length === 0);
     const [productsError, setProductsError] = useState('');
+
+    // The wait has gone on long enough to need explaining. A blank shop with
+    // no message reads as broken; "waking the server" reads as slow, which
+    // is the truth.
+    const [productsSlow, setProductsSlow] = useState(false);
 
     // True once the account's cart has been fetched and merged in. Until
     // then nothing is pushed back, or the empty first render would overwrite
@@ -75,23 +118,39 @@ const ShopContextProvider = (props) => {
     useEffect(() => {
         let cancelled = false;
 
+        // Four seconds is about where a wait stops reading as "loading" and
+        // starts reading as "broken".
+        const slowTimer = setTimeout(() => {
+            if (!cancelled) setProductsSlow(true);
+        }, 4000);
+
         const load = async () => {
             try {
                 const list = await fetchProducts();
-                if (!cancelled) setProducts(list);
+                if (cancelled) return;
+
+                setProducts(list);
+                setProductsError('');
+                writeCachedProducts(list);
             } catch (error) {
                 // Surfaced in the UI rather than only logged, so a stopped
-                // backend reads as an explainable error and not an empty shop.
-                if (!cancelled) setProductsError(error.message);
+                // backend reads as an explainable error and not an empty
+                // shop. With a cached catalogue on screen there is nothing to
+                // explain, so it stays quiet.
+                if (!cancelled && cachedProducts.length === 0) setProductsError(error.message);
             } finally {
-                if (!cancelled) setProductsLoading(false);
+                if (!cancelled) {
+                    setProductsLoading(false);
+                    setProductsSlow(false);
+                }
             }
         };
 
         load();
         // A component can unmount before the request finishes; without this
         // React warns about setting state on something that is gone.
-        return () => { cancelled = true; };
+        return () => { cancelled = true; clearTimeout(slowTimer); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // The catalogue is fetched once, which is right for shopping and wrong
@@ -99,7 +158,9 @@ const ShopContextProvider = (props) => {
     // without a reload.
     const refreshProducts = async () => {
         try {
-            setProducts(await fetchProducts());
+            const list = await fetchProducts();
+            setProducts(list);
+            writeCachedProducts(list);
         } catch (error) {
             setProductsError(error.message);
         }
@@ -277,6 +338,7 @@ const ShopContextProvider = (props) => {
         products,
         productsLoading,
         productsError,
+        productsSlow,
         refreshProducts,
         currency,
         delivery_fee,
